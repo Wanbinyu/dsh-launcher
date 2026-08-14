@@ -27,13 +27,20 @@ if ($Uninstall) {
     exit 0
 }
 
+$otherEntries = @($entries | Where-Object {
+    -not [string]::Equals($_.TrimEnd('\'), $installDirectory, [StringComparison]::OrdinalIgnoreCase)
+})
+$newEntries = @($installDirectory) + $otherEntries
+
 if ($matchingEntries.Count -eq 0) {
-    $entries += $installDirectory
-    [Environment]::SetEnvironmentVariable('Path', ($entries -join ';'), 'User')
     Write-Host "Added $installDirectory to the current user's PATH."
+} elseif ($entries.Count -gt 0 -and [string]::Equals($entries[0].TrimEnd('\'), $installDirectory, [StringComparison]::OrdinalIgnoreCase)) {
+    Write-Host "$installDirectory is already first in the current user's PATH."
 } else {
-    Write-Host "$installDirectory is already on the current user's PATH."
+    Write-Host "Moved $installDirectory to the front of the current user's PATH."
 }
+
+[Environment]::SetEnvironmentVariable('Path', ($newEntries -join ';'), 'User')
 
 Write-Host ''
 Write-Host 'Open a new terminal, then run:'

@@ -35,7 +35,7 @@ cd G:\skill\dsh-launcher
 powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
-The installer adds this directory to the current user's `PATH`. Open a new terminal after installation.
+The installer puts this directory first in the current user's `PATH`, so it takes precedence over another user-level `dsh.cmd`. Open a new terminal after installation.
 
 To remove it from the user's `PATH`:
 
