@@ -47,6 +47,21 @@ internal sealed class ProcessSupervisor : IDisposable
                 return new StartResult(true, false, null, "DeepSeek Harness is already running.");
             }
 
+            var existingWeb = await WebHealthChecker.ProbeAsync(
+                _config.WebUrl,
+                TimeSpan.FromMilliseconds(500),
+                cancellationToken).ConfigureAwait(true);
+            if (existingWeb.Responding)
+            {
+                var status = existingWeb.StatusCode.HasValue ? $" (HTTP {existingWeb.StatusCode.Value})" : string.Empty;
+                _logger.Info($"Web URL already responds{status}; leaving the existing service unmanaged.");
+                return new StartResult(
+                    Ready: true,
+                    Exited: false,
+                    ExitCode: null,
+                    Message: $"The configured web URL is already responding{status}. Reusing the existing service.");
+            }
+
             _lastExitCode = null;
             var runner = await _resolver.ResolveAsync(cancellationToken).ConfigureAwait(true);
             _logger.Info($"Starting {runner.Description}.");
@@ -76,10 +91,14 @@ internal sealed class ProcessSupervisor : IDisposable
                         Message: $"DeepSeek Harness exited before the web server became ready (exit code {exitCode}).");
                 }
 
-                if (await WebHealthChecker.IsReadyAsync(_config.WebUrl, TimeSpan.FromMilliseconds(500), cancellationToken)
-                    .ConfigureAwait(true))
+                var webProbe = await WebHealthChecker.ProbeAsync(
+                    _config.WebUrl,
+                    TimeSpan.FromMilliseconds(500),
+                    cancellationToken).ConfigureAwait(true);
+                if (webProbe.Responding)
                 {
-                    _logger.Info($"Web server is ready at {_config.WebUrl}.");
+                    var status = webProbe.StatusCode.HasValue ? $" (HTTP {webProbe.StatusCode.Value})" : string.Empty;
+                    _logger.Info($"Web server is ready at {_config.WebUrl}{status}.");
                     return new StartResult(true, false, null, $"DeepSeek Harness is ready at {_config.WebUrl}.");
                 }
 

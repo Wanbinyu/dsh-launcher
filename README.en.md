@@ -69,9 +69,12 @@ dsh restart     # restart Harness and open the web UI
 dsh status      # show status and PID in a dialog
 dsh open        # open the configured web URL
 dsh logs        # open the log directory
+dsh doctor      # check the Harness CLI, web URL, and log directory
 ```
 
 Double-click the `dsh-launcher` desktop or Start Menu shortcut to get the same behavior as `dsh`. Selecting Exit from the tray stops both Harness and the tray process.
+
+When the configured web URL is already responding before startup, the launcher does not start a second Harness process. It reuses the existing service and opens the browser, which also avoids duplicating a process when the port is occupied by another service.
 
 Explicit arguments remain under the official CLI's control:
 
@@ -136,6 +139,7 @@ The launcher only probes and opens a local URL. It does not change Harness's bin
 | Symptom | Check |
 | --- | --- |
 | `dsh` is not recognized | Reopen the terminal and confirm the installer added its directory to the user PATH. |
+| The CLI, port, or log directory is suspect | Run `dsh doctor` to show the diagnostic result. |
 | The browser does not open | Run `dsh status`, verify the port, and set `DSH_WEB_URL` when needed. |
 | Harness fails to start | Run `dsh logs` and confirm Node.js/npm or pnpm is available. |
 | The wrong CLI is selected | Set `DEEPSEEK_HARNESS_DIR` or `DEEPSEEK_DSH_BIN`, then reopen the terminal. |
@@ -148,9 +152,12 @@ powershell -ExecutionPolicy Bypass -File .\tests\smoke.ps1
 
 # Build the .NET project only
 & $env:DSH_DOTNET build .\src\DshLauncher\DshLauncher.csproj -c Release
+
+# Build the portable executable and SHA256 files
+powershell -ExecutionPolicy Bypass -File .\installer\build.ps1 -SkipInstaller
 ```
 
-The legacy smoke suite covers default `web` injection, explicit argument pass-through, and configurable CLI paths. Tray behavior must be verified in a Windows desktop session.
+The smoke suite covers default `web` injection, explicit argument pass-through, and configurable CLI paths. The packaging script writes SHA256 files for the portable executable and installer under `dist`. Tray behavior must be verified in a Windows desktop session.
 
 ## Project Boundary
 

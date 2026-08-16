@@ -351,6 +351,21 @@ function Invoke-Runner {
 
     $allArguments = @($Runner.PrefixArguments) + @($RunnerArguments)
 
+    $webUrl = Get-WebUrl
+    if ($OpenBrowser -and (Test-WebReady -Url $webUrl)) {
+        try {
+            Start-Process -FilePath $webUrl | Out-Null
+            Write-Host "The configured web URL is already responding; reused the existing service: $webUrl"
+        } catch {
+            Write-LauncherError "the web server is already responding at $webUrl, but the default browser could not be opened: $($_.Exception.Message)"
+            $ExitCode.Value = 1
+            return
+        }
+
+        $ExitCode.Value = 0
+        return
+    }
+
     if (-not $OpenBrowser) {
         & $Runner.FilePath @allArguments
         $ExitCode.Value = $LASTEXITCODE
@@ -367,7 +382,6 @@ function Invoke-Runner {
     }
 
     $process = Start-Process @startParameters
-    $webUrl = Get-WebUrl
     $deadline = [DateTime]::UtcNow.AddSeconds(30)
     $opened = $false
 
@@ -395,9 +409,31 @@ function Invoke-Runner {
     $ExitCode.Value = $process.ExitCode
 }
 
+function Invoke-Doctor {
+    $lines = @('dsh-launcher diagnostics')
+    $failed = $false
+    try {
+        $runner = Get-Runner
+        $lines += "Harness CLI: OK ($($runner.Description))"
+    } catch {
+        $failed = $true
+        $lines += "Harness CLI: FAILED ($($_.Exception.Message))"
+    }
+
+    $webUrl = Get-WebUrl
+    $lines += "Web URL: $webUrl"
+    $lines += if (Test-WebReady -Url $webUrl) { 'Web endpoint: RESPONDING' } else { 'Web endpoint: NOT RESPONDING (normal before dsh starts)' }
+    Write-Host ($lines -join [Environment]::NewLine)
+    return [int]$failed
+}
+
 try {
     $effectiveArguments = @($Arguments)
     $openBrowser = $false
+
+    if ($effectiveArguments.Count -eq 1 -and $effectiveArguments[0].ToLowerInvariant() -eq 'doctor') {
+        exit (Invoke-Doctor)
+    }
 
     if ($effectiveArguments.Count -eq 0) {
         $effectiveArguments = @('web')

@@ -69,9 +69,12 @@ dsh restart     # 重启 Harness 并打开网页
 dsh status      # 弹窗显示状态和 PID
 dsh open        # 打开当前配置的网页地址
 dsh logs        # 打开日志目录
+dsh doctor      # 检查 Harness CLI、网页地址和日志目录
 ```
 
 双击桌面或开始菜单中的 `dsh-launcher` 快捷方式，效果等同于 `dsh`。点击托盘图标的“退出”会同时停止 Harness 和托盘进程。
+
+如果目标网页地址在启动前已经有服务响应，启动器不会再拉起第二个 Harness 进程，而是复用现有服务并打开网页；这也可以避免端口被其他服务占用时重复启动。
 
 显式参数仍会交给官方 CLI：
 
@@ -136,6 +139,7 @@ npx @deepseek-ai/dsh web
 | 现象 | 处理方式 |
 | --- | --- |
 | `dsh` 不是命令 | 重新打开终端，确认安装器已把安装目录加入用户 PATH。 |
+| 怀疑 CLI、端口或日志目录有问题 | 执行 `dsh doctor` 查看诊断结果。 |
 | 浏览器没有自动打开 | 执行 `dsh status`，检查端口；必要时设置 `DSH_WEB_URL`。 |
 | Harness 启动失败 | 执行 `dsh logs` 查看最新日志，确认 Node.js/npm 或 pnpm 可用。 |
 | 运行了错误的 CLI | 设置 `DEEPSEEK_HARNESS_DIR` 或 `DEEPSEEK_DSH_BIN`，并重新打开终端。 |
@@ -148,9 +152,12 @@ powershell -ExecutionPolicy Bypass -File .\tests\smoke.ps1
 
 # 仅编译 .NET 项目
 & $env:DSH_DOTNET build .\src\DshLauncher\DshLauncher.csproj -c Release
+
+# 生成便携版和 SHA256 校验文件
+powershell -ExecutionPolicy Bypass -File .\installer\build.ps1 -SkipInstaller
 ```
 
-旧版 smoke 测试覆盖默认补 `web`、显式参数透传、可配置 CLI 路径。托盘运行需要在 Windows 桌面会话中验证。
+smoke 测试覆盖默认补 `web`、显式参数透传、可配置 CLI 路径。打包脚本会在 `dist` 中生成便携版和安装包的 SHA256 文件。托盘运行需要在 Windows 桌面会话中验证。
 
 ## 项目边界
 

@@ -33,6 +33,11 @@ internal static class Program
             return BootstrapTray(config);
         }
 
+        if (args.Length == 1 && command == "doctor")
+        {
+            return RunDoctor(config);
+        }
+
         if (args.Length == 1 && command is ("stop" or "restart" or "status" or "open" or "logs"))
         {
             return RunControlCommand(config, command);
@@ -146,6 +151,56 @@ internal static class Program
         Task.WaitAll(outputTask, errorTask);
 
         return process.ExitCode;
+    }
+
+    private static int RunDoctor(LauncherConfig config)
+    {
+        using var logger = LauncherLogger.Create(config.LogDirectory);
+        var lines = new List<string>
+        {
+            "dsh-launcher diagnostics",
+            $"Web URL: {config.WebUrl}",
+            $"Log directory: {config.LogDirectory}",
+        };
+        var failed = false;
+
+        try
+        {
+            var runner = new RunnerResolver(logger).ResolveAsync().GetAwaiter().GetResult();
+            lines.Add($"Harness CLI: OK ({runner.Description})");
+        }
+        catch (Exception exception)
+        {
+            failed = true;
+            lines.Add($"Harness CLI: FAILED ({exception.Message})");
+        }
+
+        try
+        {
+            var probe = WebHealthChecker.ProbeAsync(config.WebUrl, TimeSpan.FromSeconds(2)).GetAwaiter().GetResult();
+            lines.Add(probe.Responding
+                ? $"Web endpoint: RESPONDING (HTTP {probe.StatusCode})"
+                : "Web endpoint: NOT RESPONDING (this is normal before dsh starts)");
+        }
+        catch (Exception exception)
+        {
+            failed = true;
+            lines.Add($"Web endpoint: FAILED ({exception.Message})");
+        }
+
+        try
+        {
+            Directory.CreateDirectory(config.LogDirectory);
+            lines.Add("Log directory: writable");
+        }
+        catch (Exception exception)
+        {
+            failed = true;
+            lines.Add($"Log directory: FAILED ({exception.Message})");
+        }
+
+        ShowInformation(string.Join(Environment.NewLine, lines));
+        return failed ? 1 : 0;
     }
 
     private static async Task PumpForegroundOutputAsync(

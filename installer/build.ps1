@@ -31,6 +31,10 @@ if ($LASTEXITCODE -ne 0) {
     throw "dotnet publish failed with exit code $LASTEXITCODE."
 }
 
+$portablePath = Join-Path $publishDirectory 'dsh-launcher.exe'
+$portableHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $portablePath).Hash.ToLowerInvariant()
+Set-Content -LiteralPath (Join-Path $distDirectory 'dsh-launcher.exe.sha256') -Value "$portableHash *dsh-launcher.exe" -Encoding ascii
+
 if ($SkipInstaller) {
     Write-Host "Published portable executable: $publishDirectory\dsh-launcher.exe"
     exit 0
@@ -65,5 +69,9 @@ $script = Join-Path $root 'installer\dsh-launcher.iss'
 if ($LASTEXITCODE -ne 0) {
     throw "Inno Setup failed with exit code $LASTEXITCODE."
 }
+
+$installerPath = Join-Path $distDirectory 'dsh-launcher-setup.exe'
+$installerHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $installerPath).Hash.ToLowerInvariant()
+Set-Content -LiteralPath (Join-Path $distDirectory 'dsh-launcher-setup.exe.sha256') -Value "$installerHash *dsh-launcher-setup.exe" -Encoding ascii
 
 Write-Host "Installer created: $distDirectory\dsh-launcher-setup.exe"

@@ -4,7 +4,9 @@ internal static class WebHealthChecker
 {
     private static readonly HttpClient Client = new();
 
-    public static async Task<bool> IsReadyAsync(Uri url, TimeSpan timeout, CancellationToken cancellationToken = default)
+    public sealed record ProbeResult(bool Responding, int? StatusCode);
+
+    public static async Task<ProbeResult> ProbeAsync(Uri url, TimeSpan timeout, CancellationToken cancellationToken = default)
     {
         using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeoutSource.CancelAfter(timeout);
@@ -15,19 +17,19 @@ internal static class WebHealthChecker
                 url,
                 HttpCompletionOption.ResponseHeadersRead,
                 timeoutSource.Token).ConfigureAwait(false);
-            return true;
+            return new ProbeResult(true, (int)response.StatusCode);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return false;
+            return new ProbeResult(false, null);
         }
         catch (HttpRequestException)
         {
-            return false;
+            return new ProbeResult(false, null);
         }
         catch (InvalidOperationException)
         {
-            return false;
+            return new ProbeResult(false, null);
         }
     }
 }
