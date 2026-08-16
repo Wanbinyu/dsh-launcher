@@ -4,46 +4,55 @@
 
 [![许可证：MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-面向 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) CLI 的 Windows 快捷启动器。
+面向 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的 Windows 快捷启动器。输入 `dsh` 或 `deepseek`，后台启动 Harness，服务就绪后自动打开网页；进程、日志和状态由系统托盘管理。
 
 > [!NOTE]
-> 这是独立的便利工具，不修改 DeepSeek Harness 源码，也不是 DeepSeek 官方工具。它是 CLI 工具，不是 Cordis 插件，不提供 `dsh.bundle`。
+> 这是独立的社区便利工具，不修改 DeepSeek Harness 源码，也不是 DeepSeek 官方工具。它是 Windows 启动器，不是 Cordis 插件，不提供 `dsh.bundle`。
 
-## 一眼看懂
+## 功能
 
-| 命令 | 行为 |
-| --- | --- |
-| `dsh` | 启动官方 `web` profile，服务就绪后打开网页。 |
-| `deepseek` | 与 `dsh` 相同的更易理解的别名。 |
-| `dsh --help` | 参数原样交给官方 CLI。 |
-| `dsh plugin ...` | 保留官方插件管理命令。 |
-
-官方当前等价命令是：
-
-```text
-npx @deepseek-ai/dsh web
-```
-
-启动器只会在完全无参数时自动补上 `web`。显式传入的命令和参数仍由官方 CLI 处理。
+- 无控制台后台启动，不占用当前终端。
+- 系统托盘菜单：启动、打开网页、查看状态、重启、停止、打开日志和退出。
+- `dsh.exe`、`deepseek.exe` 两个入口，双击桌面快捷方式也可以启动。
+- 自动检测 `127.0.0.1:3080`，服务就绪后打开默认浏览器。
+- 隐藏运行 Harness 子进程，退出托盘时清理整个子进程树。
+- Harness 标准输出和错误输出写入本地日志，便于排查启动失败。
+- 保留 PowerShell 和 `.cmd` 入口；没有安装 EXE 时仍能使用旧版 CLI 回退逻辑。
 
 ## 安装
 
-环境要求：Windows PowerShell 5.1+；使用已安装 CLI 或 npx 回退时需要 Node.js/npm；使用 Harness 源码目录时需要 pnpm。
+推荐从 GitHub Releases 下载 `dsh-launcher-setup.exe`，运行安装器后重新打开终端。安装器会安装自包含的 EXE、创建开始菜单和可选桌面快捷方式、把安装目录加入当前用户 PATH，并注册卸载入口。
+
+从源码构建安装包：
 
 ```powershell
-cd G:\skill\dsh-launcher
+$env:DSH_DOTNET = 'C:\path\to\dotnet.exe' # dotnet 已在 PATH 中时可以省略
+powershell -ExecutionPolicy Bypass -File .\installer\build.ps1
+```
+
+只构建便携版 EXE：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\installer\build.ps1 -SkipInstaller
+```
+
+完整安装包需要 [Inno Setup 6](https://jrsoftware.org/isinfo.php)：
+
+```powershell
+winget install --id JRSoftware.InnoSetup --exact
+```
+
+开发者仍可以使用旧的 PATH 安装方式：
+
+```powershell
 powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
-安装器会把 `G:\skill\dsh-launcher` 放到当前用户 PATH 的最前面。安装后请重新打开终端；也可以运行 `.\install.cmd`。
-
-卸载 PATH 配置：
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\install.ps1 -Uninstall
-```
+这个方式只把仓库目录加入 PATH；如果目录旁边没有 `dsh-launcher.exe`，会回退到 PowerShell 实现。
 
 ## 使用
+
+安装后重新打开 PowerShell 或命令提示符：
 
 ```powershell
 dsh
@@ -51,9 +60,20 @@ dsh
 deepseek
 ```
 
-无参数时会执行 `dsh web`，最多等待 30 秒检测 Web 地址，然后使用 Windows 默认浏览器打开。默认地址是 `http://127.0.0.1:3080/`。
+常用管理命令：
 
-显式参数会原样透传：
+```powershell
+dsh start       # 启动后台托盘实例和 Harness
+dsh stop        # 停止 Harness，保留托盘实例
+dsh restart     # 重启 Harness 并打开网页
+dsh status      # 弹窗显示状态和 PID
+dsh open        # 打开当前配置的网页地址
+dsh logs        # 打开日志目录
+```
+
+双击桌面或开始菜单中的 `dsh-launcher` 快捷方式，效果等同于 `dsh`。点击托盘图标的“退出”会同时停止 Harness 和托盘进程。
+
+显式参数仍会交给官方 CLI：
 
 ```powershell
 dsh --help
@@ -62,13 +82,27 @@ dsh --profile tui --resume my-session
 dsh plugin --profile tui add <package>
 ```
 
+调试启动器或需要看到 Harness 前台输出时使用：
+
+```powershell
+dsh --foreground
+```
+
+无参数启动的官方等价命令是：
+
+```text
+npx @deepseek-ai/dsh web
+```
+
 ## CLI 选择顺序
 
-1. `DEEPSEEK_HARNESS_DIR`：在 Harness 源码目录中执行 `pnpm dsh`。
+启动器按以下顺序寻找 Harness CLI：
+
+1. `DEEPSEEK_HARNESS_DIR`：在 Harness 源码目录执行 `pnpm dsh`。
 2. `DEEPSEEK_DSH_BIN`：使用指定的 `dsh.cmd`、可执行文件或 JavaScript 入口。
 3. 当前目录及上级目录中的本地 `@deepseek-ai/dsh`。
 4. 全局安装的 `@deepseek-ai/dsh`。
-5. PATH 中已有的其他 `dsh` 命令。
+5. PATH 中其他位置的 `dsh` 命令。
 6. `npx --yes @deepseek-ai/dsh`。
 
 源码目录模式：
@@ -76,32 +110,51 @@ dsh plugin --profile tui add <package>
 ```powershell
 [Environment]::SetEnvironmentVariable(
   'DEEPSEEK_HARNESS_DIR',
-  'G:\path\to\deepseek-harness',
+  'C:\path\to\deepseek-harness',
   'User'
 )
 ```
 
-## 浏览器设置
+源码目录需要已经可以执行 `pnpm dsh`。修改用户环境变量后请重新打开终端。
+
+## 配置
 
 | 变量 | 作用 |
 | --- | --- |
-| `DSH_WEB_URL` | 指定完整检测和打开地址，例如 `http://127.0.0.1:3081/`。 |
-| `DSH_WEB_PORT` | 修改默认检测端口；必须与 Harness 实际配置一致。 |
-| `DSH_AUTO_OPEN` | 设置为 `0`、`false`、`no` 或 `off`，禁止自动打开浏览器。 |
+| `DSH_WEB_URL` | 完整的 HTTP(S) 检测和打开地址，例如 `http://127.0.0.1:3081/`。 |
+| `DSH_WEB_PORT` | 未设置 `DSH_WEB_URL` 时使用的端口，默认 `3080`。 |
+| `DSH_AUTO_OPEN` | 设置为 `0`、`false`、`no` 或 `off`，禁止服务就绪后自动打开浏览器。 |
+| `DSH_START_TIMEOUT_SECONDS` | 等待网页就绪的秒数，默认 `30`，范围 `1-300`。 |
+| `DSH_LOG_DIR` | 自定义日志目录。默认 `%LOCALAPPDATA%\dsh-launcher\logs`。 |
+| `DEEPSEEK_HARNESS_DIR` | 指定 Harness 源码目录。 |
+| `DEEPSEEK_DSH_BIN` | 指定 CLI 文件或 JavaScript 入口。 |
 
-启动器只打开本机地址，不会把 Harness 服务暴露到网络。
+启动器只检测并打开本机地址，不会修改 Harness 的监听地址，也不会把服务暴露到网络。
+
+## 故障排查
+
+| 现象 | 处理方式 |
+| --- | --- |
+| `dsh` 不是命令 | 重新打开终端，确认安装器已把安装目录加入用户 PATH。 |
+| 浏览器没有自动打开 | 执行 `dsh status`，检查端口；必要时设置 `DSH_WEB_URL`。 |
+| Harness 启动失败 | 执行 `dsh logs` 查看最新日志，确认 Node.js/npm 或 pnpm 可用。 |
+| 运行了错误的 CLI | 设置 `DEEPSEEK_HARNESS_DIR` 或 `DEEPSEEK_DSH_BIN`，并重新打开终端。 |
+| 想恢复前台输出 | 执行 `dsh --foreground`。 |
 
 ## 开发验证
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\tests\smoke.ps1
+
+# 仅编译 .NET 项目
+& $env:DSH_DOTNET build .\src\DshLauncher\DshLauncher.csproj -c Release
 ```
 
-测试覆盖默认补 `web`、显式参数透传、两个命令入口和可配置 CLI 路径。
+旧版 smoke 测试覆盖默认补 `web`、显式参数透传、可配置 CLI 路径。托盘运行需要在 Windows 桌面会话中验证。
 
 ## 项目边界
 
-本仓库只负责 Windows 命令入口和启动方式。Harness CLI、profile、插件、配置和 Web 应用仍由官方项目维护。
+本仓库只负责 Windows 命令入口、后台生命周期和托盘控制。Harness CLI、profile、插件、配置和 Web 应用仍由官方项目维护。
 
 ## 链接
 
