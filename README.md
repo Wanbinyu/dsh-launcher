@@ -1,71 +1,59 @@
 # dsh-launcher
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[简体中文](README.md) | [English](README.en.md)
 
-Short Windows commands for the [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) CLI.
+[![许可证：MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+面向 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) CLI 的 Windows 快捷启动器。
 
 > [!NOTE]
-> This is an independent convenience wrapper. It does not change the DeepSeek Harness source tree or claim to be an official DeepSeek tool.
+> 这是独立的便利工具，不修改 DeepSeek Harness 源码，也不是 DeepSeek 官方工具。它是 CLI 工具，不是 Cordis 插件，不提供 `dsh.bundle`。
 
-## At A Glance
+## 一眼看懂
 
-| Command | Behavior |
+| 命令 | 行为 |
 | --- | --- |
-| `dsh` | Start the official `web` profile and open the UI when it is ready. |
-| `deepseek` | Same launcher, with a more descriptive alias. |
-| `dsh --help` | Forward arguments to the official CLI without changing them. |
-| `dsh plugin ...` | Keep official plugin-management commands available. |
+| `dsh` | 启动官方 `web` profile，服务就绪后打开网页。 |
+| `deepseek` | 与 `dsh` 相同的更易理解的别名。 |
+| `dsh --help` | 参数原样交给官方 CLI。 |
+| `dsh plugin ...` | 保留官方插件管理命令。 |
 
-The official equivalent of the first command is currently:
+官方当前等价命令是：
 
 ```text
 npx @deepseek-ai/dsh web
 ```
 
-The launcher only adds the `web` argument when the command has no arguments. Explicit invocations remain under the official CLI's control.
+启动器只会在完全无参数时自动补上 `web`。显式传入的命令和参数仍由官方 CLI 处理。
 
-## Install
+## 安装
 
-Requirements:
-
-- Windows PowerShell 5.1 or later.
-- Node.js/npm for an installed CLI or the npx fallback.
-- pnpm when using a checked-out Harness source tree.
-
-Clone or download this repository, then run the user-level installer:
+环境要求：Windows PowerShell 5.1+；使用已安装 CLI 或 npx 回退时需要 Node.js/npm；使用 Harness 源码目录时需要 pnpm。
 
 ```powershell
 cd G:\skill\dsh-launcher
 powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
-The installer puts `G:\skill\dsh-launcher` first in the current user's `PATH`, so it takes precedence over another user-level `dsh.cmd`. Open a new terminal after installation.
+安装器会把 `G:\skill\dsh-launcher` 放到当前用户 PATH 的最前面。安装后请重新打开终端；也可以运行 `.\install.cmd`。
 
-The command-file equivalent is:
-
-```powershell
-.\install.cmd
-```
-
-Remove the PATH entry later with:
+卸载 PATH 配置：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\install.ps1 -Uninstall
 ```
 
-## Use It
-
-Start the browser UI:
+## 使用
 
 ```powershell
 dsh
-# or
+# 或
 deepseek
 ```
 
-The no-argument form runs `dsh web`, waits up to 30 seconds for the configured URL to respond, and opens it with the Windows default browser. The default URL is `http://127.0.0.1:3080/`.
+无参数时会执行 `dsh web`，最多等待 30 秒检测 Web 地址，然后使用 Windows 默认浏览器打开。默认地址是 `http://127.0.0.1:3080/`。
 
-All explicit arguments are passed through:
+显式参数会原样透传：
 
 ```powershell
 dsh --help
@@ -74,20 +62,16 @@ dsh --profile tui --resume my-session
 dsh plugin --profile tui add <package>
 ```
 
-## Select The CLI
+## CLI 选择顺序
 
-The launcher resolves a runner in this order:
+1. `DEEPSEEK_HARNESS_DIR`：在 Harness 源码目录中执行 `pnpm dsh`。
+2. `DEEPSEEK_DSH_BIN`：使用指定的 `dsh.cmd`、可执行文件或 JavaScript 入口。
+3. 当前目录及上级目录中的本地 `@deepseek-ai/dsh`。
+4. 全局安装的 `@deepseek-ai/dsh`。
+5. PATH 中已有的其他 `dsh` 命令。
+6. `npx --yes @deepseek-ai/dsh`。
 
-1. `DEEPSEEK_HARNESS_DIR`: run `pnpm dsh` in a checked-out Harness source tree.
-2. `DEEPSEEK_DSH_BIN`: use an explicitly selected `dsh.cmd`, executable, or JavaScript entry file.
-3. A local `@deepseek-ai/dsh` package found above the current directory.
-4. A global `@deepseek-ai/dsh` package.
-5. Another `dsh` command already on `PATH`.
-6. `npx --yes @deepseek-ai/dsh`.
-
-### Source Checkout Mode
-
-Use this mode when you are developing the Harness repository itself:
+源码目录模式：
 
 ```powershell
 [Environment]::SetEnvironmentVariable(
@@ -97,49 +81,35 @@ Use this mode when you are developing the Harness repository itself:
 )
 ```
 
-The checkout must already be installed and runnable with `pnpm dsh`. Open a new terminal after changing a user-level environment variable.
+## 浏览器设置
 
-## Browser Settings
-
-| Variable | Purpose |
+| 变量 | 作用 |
 | --- | --- |
-| `DSH_WEB_URL` | Full URL to probe and open, for example `http://127.0.0.1:3081/`. |
-| `DSH_WEB_PORT` | Port used to build the default URL instead of `3080`. It must match the Harness server configuration; it does not configure Harness by itself. |
-| `DSH_AUTO_OPEN` | Set to `0`, `false`, `no`, or `off` to skip opening the browser for the no-argument form. |
+| `DSH_WEB_URL` | 指定完整检测和打开地址，例如 `http://127.0.0.1:3081/`。 |
+| `DSH_WEB_PORT` | 修改默认检测端口；必须与 Harness 实际配置一致。 |
+| `DSH_AUTO_OPEN` | 设置为 `0`、`false`、`no` 或 `off`，禁止自动打开浏览器。 |
 
-The launcher only opens a local URL. It does not bind the Harness server to another interface or expose it on the network.
+启动器只打开本机地址，不会把 Harness 服务暴露到网络。
 
-## Troubleshooting
-
-| Symptom | Check |
-| --- | --- |
-| `dsh` is not recognized | Open a new terminal after running the installer and confirm `G:\skill\dsh-launcher` is on the user PATH. |
-| The wrong CLI runs | Run `Get-Command dsh -All`; rerun `install.ps1` so the launcher directory is first in the user PATH. A system-level command may still require an explicit path or PATH adjustment. |
-| The browser opens the wrong port | Set `DSH_WEB_URL` to the exact URL used by Harness. `DSH_WEB_PORT` only changes the launcher's probe URL. |
-| npx is slow on first launch | The fallback is downloading `@deepseek-ai/dsh`; install the package globally or set `DEEPSEEK_HARNESS_DIR` for source mode. |
-| Source mode fails | Confirm the directory contains `package.json`, pnpm is on PATH, and `pnpm dsh` works when run manually there. |
-
-## Development
-
-Run the launcher smoke tests without starting Harness:
+## 开发验证
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\tests\smoke.ps1
 ```
 
-The smoke suite checks default `web` injection, explicit argument pass-through, both command shims, and the configurable runner path.
+测试覆盖默认补 `web`、显式参数透传、两个命令入口和可配置 CLI 路径。
 
-## Project Boundary
+## 项目边界
 
-This repository is a Windows entrypoint wrapper. The Harness CLI, profiles, plugins, configuration, and browser application remain owned by the official project. Pull requests that improve runner detection, Windows quoting, installation, or documentation are welcome.
+本仓库只负责 Windows 命令入口和启动方式。Harness CLI、profile、插件、配置和 Web 应用仍由官方项目维护。
 
-## Links
+## 链接
 
 - [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
-- [GitHub repository](https://github.com/Wanbinyu/dsh-launcher)
+- [GitHub 仓库](https://github.com/Wanbinyu/dsh-launcher)
 - [Issues](https://github.com/Wanbinyu/dsh-launcher/issues)
-- [简体中文说明](README.zh-CN.md)
+- [English README](README.en.md)
 
-## License
+## 许可证
 
-MIT. See [`LICENSE`](LICENSE).
+MIT，详见 [`LICENSE`](LICENSE)。
