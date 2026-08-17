@@ -11,6 +11,10 @@ $powershell = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powersh
 $previousBinary = $env:DEEPSEEK_DSH_BIN
 $previousUrl = $env:DSH_WEB_URL
 $previousAutoOpen = $env:DSH_AUTO_OPEN
+$previousDshHome = $env:DSH_HOME
+$previousLogDirectory = $env:DSH_LOG_DIR
+$previousWebPort = $env:DSH_WEB_PORT
+$doctorReport = Join-Path $env:TEMP "dsh-launcher-doctor-$PID.json"
 
 function Invoke-LauncherForTest {
     param([string[]]$TestArguments)
@@ -38,8 +42,35 @@ try {
         throw "explicit arguments were not passed through unchanged: $passthroughOutput"
     }
 
+    $doctorDll = Join-Path $root 'src\DshLauncher\bin\Release\net8.0-windows\dsh-launcher.dll'
+    $dotnetCommand = Get-Command dotnet -ErrorAction SilentlyContinue
+    $dotnet = if (-not [string]::IsNullOrWhiteSpace($env:DSH_DOTNET)) {
+        $env:DSH_DOTNET
+    } elseif ($null -ne $dotnetCommand) {
+        $dotnetCommand.Source
+    } else {
+        $null
+    }
+    if ((Test-Path -LiteralPath $doctorDll) -and -not [string]::IsNullOrWhiteSpace($dotnet)) {
+        $env:DSH_HOME = Join-Path $env:TEMP "dsh-launcher-doctor-home-$PID"
+        $env:DSH_LOG_DIR = $env:TEMP
+        $env:DSH_WEB_PORT = '30991'
+        Remove-Item Env:DSH_WEB_URL -ErrorAction SilentlyContinue
+
+        $doctorOutput = & $dotnet $doctorDll doctor --json --report $doctorReport 2>&1
+        $doctorJson = ($doctorOutput -join [Environment]::NewLine) | ConvertFrom-Json
+        $savedJson = Get-Content -LiteralPath $doctorReport -Raw | ConvertFrom-Json
+        if ($doctorJson.launcherVersion -ne '0.3.0' -or $savedJson.launcherVersion -ne '0.3.0') {
+            throw 'doctor did not emit and save the expected JSON report'
+        }
+        if (@($doctorJson.checks.id) -notcontains 'bundle-manifests') {
+            throw 'doctor report omitted bundle manifest diagnostics'
+        }
+    }
+
     Write-Host 'dsh-launcher smoke tests passed.'
 } finally {
+    Remove-Item -LiteralPath $doctorReport -Force -ErrorAction SilentlyContinue
     if ($null -eq $previousBinary) {
         Remove-Item Env:DEEPSEEK_DSH_BIN -ErrorAction SilentlyContinue
     } else {
@@ -56,5 +87,23 @@ try {
         Remove-Item Env:DSH_AUTO_OPEN -ErrorAction SilentlyContinue
     } else {
         $env:DSH_AUTO_OPEN = $previousAutoOpen
+    }
+
+    if ($null -eq $previousDshHome) {
+        Remove-Item Env:DSH_HOME -ErrorAction SilentlyContinue
+    } else {
+        $env:DSH_HOME = $previousDshHome
+    }
+
+    if ($null -eq $previousLogDirectory) {
+        Remove-Item Env:DSH_LOG_DIR -ErrorAction SilentlyContinue
+    } else {
+        $env:DSH_LOG_DIR = $previousLogDirectory
+    }
+
+    if ($null -eq $previousWebPort) {
+        Remove-Item Env:DSH_WEB_PORT -ErrorAction SilentlyContinue
+    } else {
+        $env:DSH_WEB_PORT = $previousWebPort
     }
 }

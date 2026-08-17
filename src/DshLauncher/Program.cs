@@ -33,9 +33,9 @@ internal static class Program
             return BootstrapTray(config);
         }
 
-        if (args.Length == 1 && command == "doctor")
+        if (command == "doctor")
         {
-            return RunDoctor(config);
+            return RunDoctor(config, args.Skip(1).ToArray());
         }
 
         if (args.Length == 1 && command is ("stop" or "restart" or "status" or "open" or "logs"))
@@ -153,54 +153,66 @@ internal static class Program
         return process.ExitCode;
     }
 
-    private static int RunDoctor(LauncherConfig config)
+    private static int RunDoctor(LauncherConfig config, string[] arguments)
     {
         using var logger = LauncherLogger.Create(config.LogDirectory);
-        var lines = new List<string>
+        var json = false;
+        var copy = false;
+        string? reportPath = null;
+        for (var index = 0; index < arguments.Length; index++)
         {
-            "dsh-launcher diagnostics",
-            $"Web URL: {config.WebUrl}",
-            $"Log directory: {config.LogDirectory}",
-        };
-        var failed = false;
-
-        try
-        {
-            var runner = new RunnerResolver(logger).ResolveAsync().GetAwaiter().GetResult();
-            lines.Add($"Harness CLI: OK ({runner.Description})");
-        }
-        catch (Exception exception)
-        {
-            failed = true;
-            lines.Add($"Harness CLI: FAILED ({exception.Message})");
-        }
-
-        try
-        {
-            var probe = WebHealthChecker.ProbeAsync(config.WebUrl, TimeSpan.FromSeconds(2)).GetAwaiter().GetResult();
-            lines.Add(probe.Responding
-                ? $"Web endpoint: RESPONDING (HTTP {probe.StatusCode})"
-                : "Web endpoint: NOT RESPONDING (this is normal before dsh starts)");
-        }
-        catch (Exception exception)
-        {
-            failed = true;
-            lines.Add($"Web endpoint: FAILED ({exception.Message})");
+            switch (arguments[index])
+            {
+                case "--json":
+                    json = true;
+                    break;
+                case "--copy":
+                    copy = true;
+                    break;
+                case "--report" when index + 1 < arguments.Length:
+                    reportPath = arguments[++index];
+                    break;
+                default:
+                    throw new InvalidOperationException(
+                        "doctor accepts only --json, --copy, and --report <path>.");
+            }
         }
 
-        try
+        var report = new DoctorRunner(config, logger).RunAsync().GetAwaiter().GetResult();
+        var text = json ? report.ToJson() : report.ToText();
+        if (reportPath is not null)
         {
-            Directory.CreateDirectory(config.LogDirectory);
-            lines.Add("Log directory: writable");
-        }
-        catch (Exception exception)
-        {
-            failed = true;
-            lines.Add($"Log directory: FAILED ({exception.Message})");
+            var fullPath = Path.GetFullPath(reportPath);
+            Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+            File.WriteAllText(fullPath, fullPath.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
+                ? report.ToJson()
+                : report.ToText());
+            if (!json)
+            {
+                text += $"{Environment.NewLine}{Environment.NewLine}Saved report: {fullPath}";
+            }
         }
 
-        ShowInformation(string.Join(Environment.NewLine, lines));
-        return failed ? 1 : 0;
+        if (copy)
+        {
+            Clipboard.SetText(report.ToText());
+            if (!json)
+            {
+                text += $"{Environment.NewLine}{Environment.NewLine}Copied the redacted report to the clipboard.";
+            }
+        }
+
+        if (json)
+        {
+            NativeMethods.AttachToParentConsole();
+            Console.WriteLine(text);
+        }
+        else
+        {
+            ShowInformation(text);
+        }
+
+        return report.HasFailures ? 1 : 0;
     }
 
     private static async Task PumpForegroundOutputAsync(

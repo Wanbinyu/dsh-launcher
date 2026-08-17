@@ -241,7 +241,7 @@ internal sealed class RunnerResolver
         return path;
     }
 
-    private static string? FindExecutable(string name)
+    internal static string? FindExecutable(string name)
     {
         return FindAllExecutables(name).FirstOrDefault();
     }

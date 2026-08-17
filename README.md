@@ -17,6 +17,8 @@
 - 自动检测 `127.0.0.1:3080`，服务就绪后打开默认浏览器。
 - 隐藏运行 Harness 子进程，退出托盘时清理整个子进程树。
 - Harness 标准输出和错误输出写入本地日志，便于排查启动失败。
+- Doctor 诊断 Harness CLI、Node.js、包管理器、Web profile、bundle 清单、重复核心运行时、端口和日志目录。
+- 可复制或保存已脱敏的诊断报告，便于在 Issue 中安全分享。
 - 保留 PowerShell 和 `.cmd` 入口；没有安装 EXE 时仍能使用旧版 CLI 回退逻辑。
 
 ## 安装
@@ -69,8 +71,19 @@ dsh restart     # 重启 Harness 并打开网页
 dsh status      # 弹窗显示状态和 PID
 dsh open        # 打开当前配置的网页地址
 dsh logs        # 打开日志目录
-dsh doctor      # 检查 Harness CLI、网页地址和日志目录
+dsh doctor      # 显示完整诊断报告
 ```
+
+诊断报告支持机器可读、剪贴板和文件输出：
+
+```powershell
+dsh doctor --json
+dsh doctor --copy
+dsh doctor --report .\dsh-doctor.txt
+dsh doctor --json --report .\dsh-doctor.json
+```
+
+报告会移除 URL 凭据、查询参数、片段，以及常见的 Token、密码和 API Key 值。分享前仍建议快速检查一次报告内容。Doctor 发现阻塞问题时返回退出码 `1`，否则返回 `0`，便于脚本和 CI 使用。托盘菜单也提供“复制诊断报告”。
 
 双击桌面或开始菜单中的 `dsh-launcher` 快捷方式，效果等同于 `dsh`。点击托盘图标的“退出”会同时停止 Harness 和托盘进程。
 
@@ -139,7 +152,7 @@ npx @deepseek-ai/dsh web
 | 现象 | 处理方式 |
 | --- | --- |
 | `dsh` 不是命令 | 重新打开终端，确认安装器已把安装目录加入用户 PATH。 |
-| 怀疑 CLI、端口或日志目录有问题 | 执行 `dsh doctor` 查看诊断结果。 |
+| 怀疑 CLI、profile、插件清单、重复运行时、端口或日志目录有问题 | 执行 `dsh doctor` 查看诊断结果；提交 Issue 时可附上 `dsh doctor --copy` 的脱敏报告。 |
 | 浏览器没有自动打开 | 执行 `dsh status`，检查端口；必要时设置 `DSH_WEB_URL`。 |
 | Harness 启动失败 | 执行 `dsh logs` 查看最新日志，确认 Node.js/npm 或 pnpm 可用。 |
 | 运行了错误的 CLI | 设置 `DEEPSEEK_HARNESS_DIR` 或 `DEEPSEEK_DSH_BIN`，并重新打开终端。 |
@@ -157,7 +170,7 @@ powershell -ExecutionPolicy Bypass -File .\tests\smoke.ps1
 powershell -ExecutionPolicy Bypass -File .\installer\build.ps1 -SkipInstaller
 ```
 
-smoke 测试覆盖默认补 `web`、显式参数透传、可配置 CLI 路径。打包脚本会在 `dist` 中生成便携版和安装包的 SHA256 文件。托盘运行需要在 Windows 桌面会话中验证。
+smoke 测试覆盖默认补 `web`、显式参数透传、可配置 CLI 路径。Doctor 可用 `dsh doctor --json` 做无弹窗验证。打包脚本会在 `dist` 中生成便携版和安装包的 SHA256 文件。托盘运行需要在 Windows 桌面会话中验证。
 
 ## 项目边界
 

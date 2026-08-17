@@ -17,6 +17,8 @@ A Windows launcher for [DeepSeek Harness](https://github.com/deepseek-ai/deepsee
 - Probes `127.0.0.1:3080` and opens the default browser when the server responds.
 - Hides the Harness child process and kills the entire child tree on exit.
 - Writes Harness stdout and stderr to local logs for troubleshooting.
+- Doctor checks the Harness CLI, Node.js, package managers, Web profile, bundle manifests, duplicate core runtimes, endpoint, port, and log directory.
+- Copies or saves a redacted diagnostic report that is practical to share in an issue.
 - Keeps the PowerShell and `.cmd` entrypoints as compatibility fallbacks when the EXE is not present.
 
 ## Install
@@ -69,8 +71,19 @@ dsh restart     # restart Harness and open the web UI
 dsh status      # show status and PID in a dialog
 dsh open        # open the configured web URL
 dsh logs        # open the log directory
-dsh doctor      # check the Harness CLI, web URL, and log directory
+dsh doctor      # show the complete diagnostic report
 ```
+
+Diagnostics support machine-readable, clipboard, and file output:
+
+```powershell
+dsh doctor --json
+dsh doctor --copy
+dsh doctor --report .\dsh-doctor.txt
+dsh doctor --json --report .\dsh-doctor.json
+```
+
+Reports remove URL credentials, query strings, fragments, and common token, password, and API-key assignments. Give a report a quick review before sharing it. Doctor exits with code `1` when it finds a blocking problem and `0` otherwise, so it can be used in scripts and CI. The tray menu also includes Copy diagnostics.
 
 Double-click the `dsh-launcher` desktop or Start Menu shortcut to get the same behavior as `dsh`. Selecting Exit from the tray stops both Harness and the tray process.
 
@@ -139,7 +152,7 @@ The launcher only probes and opens a local URL. It does not change Harness's bin
 | Symptom | Check |
 | --- | --- |
 | `dsh` is not recognized | Reopen the terminal and confirm the installer added its directory to the user PATH. |
-| The CLI, port, or log directory is suspect | Run `dsh doctor` to show the diagnostic result. |
+| The CLI, profile, plugin manifest, duplicate runtime, port, or log directory is suspect | Run `dsh doctor`; attach the redacted output from `dsh doctor --copy` when opening an issue. |
 | The browser does not open | Run `dsh status`, verify the port, and set `DSH_WEB_URL` when needed. |
 | Harness fails to start | Run `dsh logs` and confirm Node.js/npm or pnpm is available. |
 | The wrong CLI is selected | Set `DEEPSEEK_HARNESS_DIR` or `DEEPSEEK_DSH_BIN`, then reopen the terminal. |
@@ -157,7 +170,7 @@ powershell -ExecutionPolicy Bypass -File .\tests\smoke.ps1
 powershell -ExecutionPolicy Bypass -File .\installer\build.ps1 -SkipInstaller
 ```
 
-The smoke suite covers default `web` injection, explicit argument pass-through, and configurable CLI paths. The packaging script writes SHA256 files for the portable executable and installer under `dist`. Tray behavior must be verified in a Windows desktop session.
+The smoke suite covers default `web` injection, explicit argument pass-through, and configurable CLI paths. Doctor can be tested without a dialog through `dsh doctor --json`. The packaging script writes SHA256 files for the portable executable and installer under `dist`. Tray behavior must be verified in a Windows desktop session.
 
 ## Project Boundary
 

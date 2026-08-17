@@ -49,6 +49,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         menu.Items.Add(CreateMenuItem("停止 / Stop", async (_, _) => await StopAsync()));
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(CreateMenuItem("打开日志目录 / Open logs", HandleLogsClick));
+        menu.Items.Add(CreateMenuItem("复制诊断报告 / Copy diagnostics", async (_, _) => await CopyDiagnosticsAsync()));
         menu.Items.Add(CreateMenuItem("退出 / Exit", (_, _) => ExitApplication()));
         return menu;
     }
@@ -90,6 +91,23 @@ internal sealed class TrayApplicationContext : ApplicationContext
         {
             _logger.Error("Could not open the log directory", exception);
             ShowError($"无法打开日志目录 / Could not open logs:\n{exception.Message}");
+        }
+    }
+
+    private async Task CopyDiagnosticsAsync()
+    {
+        try
+        {
+            var report = await new DoctorRunner(_config, _logger).RunAsync();
+            Clipboard.SetText(report.ToText());
+            ShowStatus(report.HasFailures
+                ? "诊断报告已复制；发现需要处理的问题。\n\nDiagnostics copied; problems were found."
+                : "诊断报告已复制。\n\nDiagnostics copied.");
+        }
+        catch (Exception exception)
+        {
+            _logger.Error("Could not create diagnostics", exception);
+            ShowError($"无法生成诊断报告 / Could not create diagnostics:\n{exception.Message}");
         }
     }
 
