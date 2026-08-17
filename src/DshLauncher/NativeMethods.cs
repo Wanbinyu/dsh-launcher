@@ -14,11 +14,7 @@ internal static class NativeMethods
 
     public static bool AttachToParentConsole()
     {
-        if (!AttachConsole(AttachParentProcess))
-        {
-            // A GUI process may already have inherited a usable console.
-            return GetConsoleWindow() != IntPtr.Zero;
-        }
+        var hasConsole = AttachConsole(AttachParentProcess) || GetConsoleWindow() != IntPtr.Zero;
 
         try
         {
@@ -28,9 +24,9 @@ internal static class NativeMethods
         }
         catch (IOException)
         {
-            return false;
+            return hasConsole;
         }
 
-        return true;
+        return hasConsole;
     }
 }

@@ -9,7 +9,7 @@ if exist "%DSH_LAUNCHER_DIR%dsh-launcher.exe" (
     if /I "%~1"=="status" if "%~2"=="" goto background
     if /I "%~1"=="open" if "%~2"=="" goto background
     if /I "%~1"=="logs" if "%~2"=="" goto background
-    if /I "%~1"=="doctor" if "%~2"=="" goto background
+    if /I "%~1"=="doctor" goto foreground
     if /I "%~1"=="--foreground" goto foreground
 )
 "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%DSH_LAUNCHER_DIR%dsh-launcher.ps1" -CommandName deepseek %*

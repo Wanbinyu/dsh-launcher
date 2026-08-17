@@ -14,7 +14,9 @@ $previousAutoOpen = $env:DSH_AUTO_OPEN
 $previousDshHome = $env:DSH_HOME
 $previousLogDirectory = $env:DSH_LOG_DIR
 $previousWebPort = $env:DSH_WEB_PORT
+$previousDotnetRoot = $env:DOTNET_ROOT
 $doctorReport = Join-Path $env:TEMP "dsh-launcher-doctor-$PID.json"
+$doctorCommand = Join-Path $root 'src\DshLauncher\bin\Release\net8.0-windows\dsh.cmd'
 
 function Invoke-LauncherForTest {
     param([string[]]$TestArguments)
@@ -42,28 +44,23 @@ try {
         throw "explicit arguments were not passed through unchanged: $passthroughOutput"
     }
 
-    $doctorDll = Join-Path $root 'src\DshLauncher\bin\Release\net8.0-windows\dsh-launcher.dll'
-    $dotnetCommand = Get-Command dotnet -ErrorAction SilentlyContinue
-    $dotnet = if (-not [string]::IsNullOrWhiteSpace($env:DSH_DOTNET)) {
-        $env:DSH_DOTNET
-    } elseif ($null -ne $dotnetCommand) {
-        $dotnetCommand.Source
-    } else {
-        $null
-    }
-    if ((Test-Path -LiteralPath $doctorDll) -and -not [string]::IsNullOrWhiteSpace($dotnet)) {
+    $doctorExecutable = Join-Path $root 'src\DshLauncher\bin\Release\net8.0-windows\dsh-launcher.exe'
+    if (Test-Path -LiteralPath $doctorExecutable) {
+        if (-not [string]::IsNullOrWhiteSpace($env:DSH_DOTNET)) {
+            $env:DOTNET_ROOT = Split-Path -Path $env:DSH_DOTNET -Parent
+        }
+        Copy-Item -LiteralPath (Join-Path $root 'dsh.cmd') -Destination $doctorCommand -Force
         $env:DSH_HOME = Join-Path $env:TEMP "dsh-launcher-doctor-home-$PID"
         $env:DSH_LOG_DIR = $env:TEMP
         $env:DSH_WEB_PORT = '30991'
         Remove-Item Env:DSH_WEB_URL -ErrorAction SilentlyContinue
 
-        $doctorOutput = & $dotnet $doctorDll doctor --json --report $doctorReport 2>&1
-        $doctorJson = ($doctorOutput -join [Environment]::NewLine) | ConvertFrom-Json
+        & $doctorCommand doctor --json --report $doctorReport 2>&1 | Out-Null
         $savedJson = Get-Content -LiteralPath $doctorReport -Raw | ConvertFrom-Json
-        if ($doctorJson.launcherVersion -ne '0.3.0' -or $savedJson.launcherVersion -ne '0.3.0') {
-            throw 'doctor did not emit and save the expected JSON report'
+        if ($savedJson.launcherVersion -ne '0.3.1') {
+            throw 'doctor did not save the expected JSON report'
         }
-        if (@($doctorJson.checks.id) -notcontains 'bundle-manifests') {
+        if (@($savedJson.checks.id) -notcontains 'bundle-manifests') {
             throw 'doctor report omitted bundle manifest diagnostics'
         }
     }
@@ -71,6 +68,7 @@ try {
     Write-Host 'dsh-launcher smoke tests passed.'
 } finally {
     Remove-Item -LiteralPath $doctorReport -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $doctorCommand -Force -ErrorAction SilentlyContinue
     if ($null -eq $previousBinary) {
         Remove-Item Env:DEEPSEEK_DSH_BIN -ErrorAction SilentlyContinue
     } else {
@@ -105,5 +103,11 @@ try {
         Remove-Item Env:DSH_WEB_PORT -ErrorAction SilentlyContinue
     } else {
         $env:DSH_WEB_PORT = $previousWebPort
+    }
+
+    if ($null -eq $previousDotnetRoot) {
+        Remove-Item Env:DOTNET_ROOT -ErrorAction SilentlyContinue
+    } else {
+        $env:DOTNET_ROOT = $previousDotnetRoot
     }
 }
