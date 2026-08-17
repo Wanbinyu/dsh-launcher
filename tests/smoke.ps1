@@ -141,3 +141,5 @@ try {
         $env:DOTNET_ROOT = $previousDotnetRoot
     }
 }
+
+exit 0
