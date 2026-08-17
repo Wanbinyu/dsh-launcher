@@ -7,7 +7,8 @@ internal sealed record RunnerSpec(
     string FilePath,
     IReadOnlyList<string> PrefixArguments,
     string WorkingDirectory,
-    string Description);
+    string Description,
+    IReadOnlyDictionary<string, string?>? EnvironmentOverrides = null);
 
 internal static class ProcessLauncher
 {
@@ -61,6 +62,21 @@ internal static class ProcessLauncher
         {
             startInfo.StandardOutputEncoding = Encoding.UTF8;
             startInfo.StandardErrorEncoding = Encoding.UTF8;
+        }
+
+        if (runner.EnvironmentOverrides is not null)
+        {
+            foreach (var (name, value) in runner.EnvironmentOverrides)
+            {
+                if (value is null)
+                {
+                    startInfo.Environment.Remove(name);
+                }
+                else
+                {
+                    startInfo.Environment[name] = value;
+                }
+            }
         }
 
         if (isBatchFile)

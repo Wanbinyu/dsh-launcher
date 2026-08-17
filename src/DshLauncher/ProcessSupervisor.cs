@@ -66,12 +66,14 @@ internal sealed class ProcessSupervisor : IDisposable
             var runner = await _resolver.ResolveAsync(cancellationToken).ConfigureAwait(true);
             _logger.Info($"Starting {runner.Description}.");
 
-            var process = ProcessLauncher.Start(runner, redirectOutput: true, hiddenWindow: true);
+            var webRunner = AddWebCommand(runner);
+
+            var process = ProcessLauncher.Start(webRunner, redirectOutput: true, hiddenWindow: true);
             process.EnableRaisingEvents = true;
             process.Exited += HandleProcessExited;
             lock (_sync)
             {
-                _runner = runner;
+                _runner = webRunner;
                 _process = process;
             }
 
@@ -301,5 +303,13 @@ internal sealed class ProcessSupervisor : IDisposable
                 throw new ObjectDisposedException(nameof(ProcessSupervisor));
             }
         }
+    }
+
+    internal static RunnerSpec AddWebCommand(RunnerSpec runner)
+    {
+        return runner with
+        {
+            PrefixArguments = runner.PrefixArguments.Append("web").ToArray()
+        };
     }
 }

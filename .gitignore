@@ -1,7 +1,7 @@
 .DS_Store
 Thumbs.db
-src/**/bin/
-src/**/obj/
+**/bin/
+**/obj/
 artifacts/
 dist/
 .vs/

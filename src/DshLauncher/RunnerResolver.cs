@@ -39,6 +39,22 @@ internal sealed class RunnerResolver
                 $"local @deepseek-ai/dsh package at {localEntry}");
         }
 
+        var installedEntry = FindInstalledPackageEntry();
+        if (installedEntry is not null)
+        {
+            var node = FindExecutable("node");
+            if (node is null)
+            {
+                throw new InvalidOperationException("An installed @deepseek-ai/dsh package was found, but node was not found on PATH.");
+            }
+
+            return new RunnerSpec(
+                node,
+                new[] { installedEntry },
+                Environment.CurrentDirectory,
+                $"installed @deepseek-ai/dsh package at {installedEntry}");
+        }
+
         var globalEntry = await FindGlobalPackageEntryAsync(cancellationToken).ConfigureAwait(false);
         if (globalEntry is not null)
         {
@@ -73,9 +89,13 @@ internal sealed class RunnerResolver
 
         return new RunnerSpec(
             npx,
-            new[] { "--yes", "@deepseek-ai/dsh" },
+            new[] { "--yes", "--package=@deepseek-ai/dsh", "--", "dsh" },
             Environment.CurrentDirectory,
-            "the @deepseek-ai/dsh package through npx");
+            "the @deepseek-ai/dsh package through npx",
+            new Dictionary<string, string?>
+            {
+                ["PATH"] = GetPathWithoutLauncherShims()
+            });
     }
 
     private RunnerSpec? GetRunnerFromSource()
@@ -207,9 +227,9 @@ internal sealed class RunnerResolver
         var ownDirectory = Path.GetFullPath(AppContext.BaseDirectory).TrimEnd(Path.DirectorySeparatorChar);
         foreach (var candidate in FindAllExecutables("dsh"))
         {
-            var candidateDirectory = Path.GetDirectoryName(candidate)?.TrimEnd(Path.DirectorySeparatorChar);
-            if (string.Equals(candidateDirectory, ownDirectory, StringComparison.OrdinalIgnoreCase))
+            if (IsLauncherShim(candidate, ownDirectory))
             {
+                _logger.Info($"Skipping dsh-launcher wrapper at {candidate}.");
                 continue;
             }
 
@@ -217,6 +237,97 @@ internal sealed class RunnerResolver
         }
 
         return null;
+    }
+
+    private static string? FindInstalledPackageEntry()
+    {
+        var configuredHome = Environment.GetEnvironmentVariable("DSH_HOME");
+        var dshHome = string.IsNullOrWhiteSpace(configuredHome)
+            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dsh")
+            : Path.GetFullPath(configuredHome.Trim());
+        var candidates = new[]
+        {
+            Path.Combine(dshHome, "profiles", "web", "node_modules", "@deepseek-ai", "dsh", "lib", "bin.js"),
+            Path.Combine(dshHome, "profiles", "node_modules", "@deepseek-ai", "dsh", "lib", "bin.js"),
+            Path.Combine(dshHome, "node_modules", "@deepseek-ai", "dsh", "lib", "bin.js")
+        };
+
+        return candidates.FirstOrDefault(File.Exists) is { } entry ? Path.GetFullPath(entry) : null;
+    }
+
+    private static bool IsLauncherShim(string candidate, string ownDirectory)
+    {
+        var fullPath = Path.GetFullPath(candidate);
+        var candidateDirectory = Path.GetDirectoryName(fullPath)?.TrimEnd(Path.DirectorySeparatorChar);
+        if (string.IsNullOrWhiteSpace(candidateDirectory))
+        {
+            return false;
+        }
+
+        if (string.Equals(candidateDirectory, ownDirectory, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        var launcherMarkers = new[]
+        {
+            "dsh-launcher.exe",
+            "dsh-launcher.dll",
+            "dsh-launcher.ps1"
+        };
+        if (launcherMarkers.Any(marker => File.Exists(Path.Combine(candidateDirectory, marker))))
+        {
+            return true;
+        }
+
+        if (!ProcessLauncher.IsBatchFile(fullPath))
+        {
+            return false;
+        }
+
+        try
+        {
+            using var reader = new StreamReader(fullPath);
+            var buffer = new char[64 * 1024];
+            var length = reader.ReadBlock(buffer, 0, buffer.Length);
+            return new string(buffer, 0, length).Contains("dsh-launcher", StringComparison.OrdinalIgnoreCase);
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
+    private static string GetPathWithoutLauncherShims()
+    {
+        var ownDirectory = Path.GetFullPath(AppContext.BaseDirectory).TrimEnd(Path.DirectorySeparatorChar);
+        var launcherDirectories = FindAllExecutables("dsh")
+            .Where(candidate => IsLauncherShim(candidate, ownDirectory))
+            .Select(Path.GetDirectoryName)
+            .Where(directory => !string.IsNullOrWhiteSpace(directory))
+            .Select(directory => Path.GetFullPath(directory!).TrimEnd(Path.DirectorySeparatorChar))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var path = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
+        var safeEntries = path
+            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
+            .Where(entry =>
+            {
+                try
+                {
+                    var directory = Path.GetFullPath(entry.Trim().Trim('"')).TrimEnd(Path.DirectorySeparatorChar);
+                    return !launcherDirectories.Contains(directory);
+                }
+                catch (Exception exception) when (exception is ArgumentException or NotSupportedException)
+                {
+                    return true;
+                }
+            });
+
+        return string.Join(Path.PathSeparator, safeEntries);
     }
 
     private static string GetExistingDirectory(string value, string variableName)

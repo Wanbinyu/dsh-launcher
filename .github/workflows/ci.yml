@@ -18,6 +18,8 @@ jobs:
           dotnet-version: 8.0.x
       - name: Build
         run: dotnet build src/DshLauncher/DshLauncher.csproj -c Release --nologo
+      - name: Unit tests
+        run: dotnet run --project tests/DshLauncher.Tests/DshLauncher.Tests.csproj -c Release
       - name: Smoke test
         shell: powershell
         run: ./tests/smoke.ps1

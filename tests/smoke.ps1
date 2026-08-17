@@ -9,14 +9,18 @@ $launcher = Join-Path $root 'dsh-launcher.ps1'
 $fake = Join-Path $PSScriptRoot 'fake-dsh.cmd'
 $powershell = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
 $previousBinary = $env:DEEPSEEK_DSH_BIN
+$previousHarnessDirectory = $env:DEEPSEEK_HARNESS_DIR
 $previousUrl = $env:DSH_WEB_URL
 $previousAutoOpen = $env:DSH_AUTO_OPEN
 $previousDshHome = $env:DSH_HOME
 $previousLogDirectory = $env:DSH_LOG_DIR
 $previousWebPort = $env:DSH_WEB_PORT
 $previousDotnetRoot = $env:DOTNET_ROOT
+$previousPath = $env:PATH
 $doctorReport = Join-Path $env:TEMP "dsh-launcher-doctor-$PID.json"
+$resolverReport = Join-Path $env:TEMP "dsh-launcher-resolver-$PID.json"
 $doctorCommand = Join-Path $root 'src\DshLauncher\bin\Release\net8.0-windows\dsh.cmd'
+$resolverTestDirectory = Join-Path $env:TEMP "dsh-launcher-resolver-$PID"
 
 function Invoke-LauncherForTest {
     param([string[]]$TestArguments)
@@ -57,22 +61,48 @@ try {
 
         & $doctorCommand doctor --json --report $doctorReport 2>&1 | Out-Null
         $savedJson = Get-Content -LiteralPath $doctorReport -Raw | ConvertFrom-Json
-        if ($savedJson.launcherVersion -ne '0.3.1') {
+        if ($savedJson.launcherVersion -ne '0.3.2') {
             throw 'doctor did not save the expected JSON report'
         }
         if (@($savedJson.checks.id) -notcontains 'bundle-manifests') {
             throw 'doctor report omitted bundle manifest diagnostics'
+        }
+
+        $shimDirectory = Join-Path $resolverTestDirectory 'shim'
+        $toolDirectory = Join-Path $resolverTestDirectory 'tools'
+        New-Item -ItemType Directory -Force -Path $shimDirectory, $toolDirectory | Out-Null
+        Copy-Item -LiteralPath (Join-Path $root 'dsh.cmd') -Destination (Join-Path $shimDirectory 'dsh.cmd')
+        Copy-Item -LiteralPath (Join-Path $root 'dsh-launcher.ps1') -Destination (Join-Path $shimDirectory 'dsh-launcher.ps1')
+        Copy-Item -LiteralPath $fake -Destination (Join-Path $toolDirectory 'npx.cmd')
+
+        Remove-Item Env:DEEPSEEK_DSH_BIN -ErrorAction SilentlyContinue
+        Remove-Item Env:DEEPSEEK_HARNESS_DIR -ErrorAction SilentlyContinue
+        $env:PATH = "$shimDirectory;$toolDirectory"
+        & $doctorCommand doctor --json --report $resolverReport 2>&1 | Out-Null
+        $resolverJson = Get-Content -LiteralPath $resolverReport -Raw | ConvertFrom-Json
+        $harnessCheck = @($resolverJson.checks | Where-Object id -eq 'harness-cli')
+        if ($harnessCheck.Count -ne 1 -or $harnessCheck[0].message -notmatch 'through npx') {
+            throw "resolver selected the dsh-launcher shim instead of npx: $($harnessCheck.message)"
         }
     }
 
     Write-Host 'dsh-launcher smoke tests passed.'
 } finally {
     Remove-Item -LiteralPath $doctorReport -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $resolverReport -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $doctorCommand -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $resolverTestDirectory -Recurse -Force -ErrorAction SilentlyContinue
+    $env:PATH = $previousPath
     if ($null -eq $previousBinary) {
         Remove-Item Env:DEEPSEEK_DSH_BIN -ErrorAction SilentlyContinue
     } else {
         $env:DEEPSEEK_DSH_BIN = $previousBinary
+    }
+
+    if ($null -eq $previousHarnessDirectory) {
+        Remove-Item Env:DEEPSEEK_HARNESS_DIR -ErrorAction SilentlyContinue
+    } else {
+        $env:DEEPSEEK_HARNESS_DIR = $previousHarnessDirectory
     }
 
     if ($null -eq $previousUrl) {
