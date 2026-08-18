@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <rect width="1600" height="900" fill="#f3f7f5"/>
+  <rect width="1600" height="22" fill="#2ec4b6"/>
+  <rect x="92" y="86" width="248" height="54" rx="27" fill="#172124"/>
+  <text x="216" y="121" fill="#f3f7f5" font-family="Microsoft YaHei, Segoe UI, sans-serif" font-size="25" font-weight="600" text-anchor="middle">WINDOWS 开源工具</text>
+  <text x="92" y="314" fill="#172124" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="116" font-weight="750">dsh-launcher</text>
+  <text x="96" y="414" fill="#344448" font-family="Microsoft YaHei, Segoe UI, sans-serif" font-size="52" font-weight="600">让 DeepSeek Harness 一键启动</text>
+  <text x="98" y="488" fill="#607176" font-family="Microsoft YaHei, Segoe UI, sans-serif" font-size="31">双击启动 · 后台托盘 · 就绪后自动打开浏览器</text>
+  <line x1="98" y1="566" x2="830" y2="566" stroke="#cbd8d4" stroke-width="4"/>
+  <g font-family="Microsoft YaHei, Segoe UI, sans-serif" font-size="25" font-weight="600">
+    <circle cx="120" cy="652" r="14" fill="#2ec4b6"/>
+    <text x="150" y="661" fill="#344448">一个托盘进程</text>
+    <circle cx="375" cy="652" r="14" fill="#ffb84d"/>
+    <text x="405" y="661" fill="#344448">一个 Harness</text>
+    <circle cx="630" cy="652" r="14" fill="#ff6b5f"/>
+    <text x="660" y="661" fill="#344448">一个可用页面</text>
+  </g>
+  <text x="98" y="802" fill="#7a898d" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="24">github.com/Wanbinyu/dsh-launcher</text>
+  <rect x="1000" y="160" width="480" height="480" rx="120" fill="#dce7e3"/>
+  <image href="../../../assets/dsh-launcher.svg" x="1040" y="200" width="400" height="400"/>
+  <rect x="1068" y="690" width="360" height="82" rx="41" fill="#172124"/>
+  <text x="1248" y="742" fill="#f3f7f5" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="29" font-weight="650" text-anchor="middle">dsh 或 deepseek</text>
+</svg>

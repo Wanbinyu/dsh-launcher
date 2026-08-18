@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="760" viewBox="0 0 1600 760">
+  <rect width="1600" height="760" fill="#ffffff"/>
+  <text x="110" y="106" fill="#172124" font-family="Microsoft YaHei, Segoe UI, sans-serif" font-size="52" font-weight="700">从双击到可用页面，只需要三步</text>
+  <text x="112" y="154" fill="#718085" font-family="Microsoft YaHei, Segoe UI, sans-serif" font-size="25">托盘立即出现，浏览器只在 Harness 真正就绪后打开</text>
+  <line x1="450" y1="376" x2="624" y2="376" stroke="#b8c8c4" stroke-width="10" stroke-linecap="round"/>
+  <path d="M598 347l34 29-34 29" fill="none" stroke="#2ec4b6" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="970" y1="376" x2="1144" y2="376" stroke="#b8c8c4" stroke-width="10" stroke-linecap="round"/>
+  <path d="M1118 347l34 29-34 29" fill="none" stroke="#2ec4b6" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <g>
+    <rect x="130" y="242" width="300" height="214" rx="28" fill="#172124"/>
+    <rect x="156" y="268" width="248" height="150" rx="12" fill="#f3f7f5"/>
+    <path d="M252 492h56m-28-36v36" fill="none" stroke="#172124" stroke-width="18" stroke-linecap="round"/>
+    <path d="M244 316l55 42-55 42" fill="none" stroke="#2ec4b6" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M319 400h44" stroke="#ffb84d" stroke-width="20" stroke-linecap="round"/>
+    <text x="280" y="564" fill="#172124" font-family="Microsoft YaHei, Segoe UI, sans-serif" font-size="34" font-weight="700" text-anchor="middle">1. 双击快捷方式</text>
+    <text x="280" y="608" fill="#718085" font-family="Microsoft YaHei, Segoe UI, sans-serif" font-size="23" text-anchor="middle">也可以输入 dsh</text>
+  </g>
+  <g>
+    <image href="../../../assets/dsh-launcher-small.svg" x="650" y="228" width="290" height="290"/>
+    <text x="795" y="564" fill="#172124" font-family="Microsoft YaHei, Segoe UI, sans-serif" font-size="34" font-weight="700" text-anchor="middle">2. 后台托盘启动</text>
+    <text x="795" y="608" fill="#718085" font-family="Microsoft YaHei, Segoe UI, sans-serif" font-size="23" text-anchor="middle">等待 127.0.0.1:3080</text>
+  </g>
+  <g>
+    <rect x="1170" y="242" width="300" height="214" rx="30" fill="#f3f7f5" stroke="#cbd8d4" stroke-width="8"/>
+    <path d="M1174 304h292" stroke="#cbd8d4" stroke-width="8"/>
+    <circle cx="1212" cy="276" r="11" fill="#ff6b5f"/>
+    <circle cx="1248" cy="276" r="11" fill="#ffb84d"/>
+    <circle cx="1284" cy="276" r="11" fill="#2ec4b6"/>
+    <path d="M1260 354h120m-120 42h82" stroke="#172124" stroke-width="18" stroke-linecap="round"/>
+    <circle cx="1405" cy="396" r="30" fill="#2ec4b6"/>
+    <path d="M1392 396l10 10 20-24" fill="none" stroke="#ffffff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="1320" y="564" fill="#172124" font-family="Microsoft YaHei, Segoe UI, sans-serif" font-size="34" font-weight="700" text-anchor="middle">3. 打开可用网页</text>
+    <text x="1320" y="608" fill="#718085" font-family="Microsoft YaHei, Segoe UI, sans-serif" font-size="23" text-anchor="middle">HTTP 响应后只打开一次</text>
+  </g>
+</svg>
