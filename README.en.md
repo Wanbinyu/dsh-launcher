@@ -2,6 +2,8 @@
 
 [简体中文](README.md) | [English](README.en.md)
 
+<p align="center"><img src="assets/dsh-launcher.png" alt="dsh-launcher icon" width="112"></p>
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A Windows launcher for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). Run `dsh` or `deepseek` to start Harness in the background and open the browser when the local web server is ready. The tray process owns the child process, status, logs, and lifecycle controls.
@@ -16,6 +18,7 @@ A Windows launcher for [DeepSeek Harness](https://github.com/deepseek-ai/deepsee
 - Installs both `dsh.exe` and `deepseek.exe`; a desktop shortcut can launch it directly.
 - Probes `127.0.0.1:3080` and opens the default browser when the server responds.
 - Coalesces repeated desktop, tray, and CLI requests, then opens the browser once after the shared startup is ready.
+- Uses one multi-size Windows icon across the EXE, tray, desktop shortcut, and installer.
 - Hides the Harness child process and kills the entire child tree on exit.
 - Writes Harness stdout and stderr to local logs for troubleshooting.
 - Doctor checks the Harness CLI, Node.js, package managers, Web profile, bundle manifests, duplicate core runtimes, endpoint, port, and log directory.
@@ -165,6 +168,8 @@ The launcher only probes and opens a local URL. It does not change Harness's bin
 ## Development
 
 ```powershell
+powershell -ExecutionPolicy Bypass -File .\assets\build-icon.ps1
+
 powershell -ExecutionPolicy Bypass -File .\tests\smoke.ps1
 
 # Build the .NET project only
@@ -174,7 +179,7 @@ powershell -ExecutionPolicy Bypass -File .\tests\smoke.ps1
 powershell -ExecutionPolicy Bypass -File .\installer\build.ps1 -SkipInstaller
 ```
 
-The smoke suite covers default `web` injection, explicit argument pass-through, and configurable CLI paths. Doctor can be tested without a dialog through `dsh doctor --json`. The packaging script writes SHA256 files for the portable executable and installer under `dist`. Tray behavior must be verified in a Windows desktop session.
+The icon script generates the README preview and a nine-size ICO from the project SVG sources. Tests cover default `web` injection, explicit argument pass-through, configurable CLI paths, coalesced startup requests, and the embedded icon resource. Doctor can be tested without a dialog through `dsh doctor --json`. The packaging script writes SHA256 files for the portable executable and installer under `dist`. Tray behavior must still be verified in a Windows desktop session.
 
 ## Project Boundary
 

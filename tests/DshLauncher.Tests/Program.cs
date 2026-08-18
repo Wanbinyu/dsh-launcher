@@ -21,7 +21,27 @@ if (!runner.PrefixArguments.SequenceEqual(expectedArguments[..^1]))
 
 await VerifyNpxFallbackAsync();
 await VerifyStartRequestsAreCoalescedAsync();
+VerifyIconResource();
 Console.WriteLine("DshLauncher tests passed.");
+
+static void VerifyIconResource()
+{
+    using var stream = typeof(ProcessSupervisor).Assembly.GetManifestResourceStream(
+        "DshLauncher.Assets.dsh-launcher.ico");
+    if (stream is null)
+    {
+        throw new InvalidOperationException("The application icon was not embedded.");
+    }
+
+    Span<byte> header = stackalloc byte[6];
+    stream.ReadExactly(header);
+    var iconType = BitConverter.ToUInt16(header[2..4]);
+    var imageCount = BitConverter.ToUInt16(header[4..6]);
+    if (iconType != 1 || imageCount < 2)
+    {
+        throw new InvalidOperationException("The embedded application icon is not a multi-size ICO file.");
+    }
+}
 
 static async Task VerifyStartRequestsAreCoalescedAsync()
 {

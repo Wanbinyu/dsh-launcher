@@ -10,6 +10,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private readonly LauncherLogger _logger;
     private readonly ProcessSupervisor _supervisor;
     private readonly StartCoordinator _startCoordinator;
+    private readonly Icon _applicationIcon;
     private readonly NotifyIcon _notifyIcon;
     private readonly ContextMenuStrip _menu;
     private readonly SynchronizationContext _uiContext;
@@ -29,9 +30,10 @@ internal sealed class TrayApplicationContext : ApplicationContext
             OpenBrowser);
 
         _menu = CreateMenu();
+        _applicationIcon = LoadApplicationIcon();
         _notifyIcon = new NotifyIcon
         {
-            Icon = SystemIcons.Application,
+            Icon = _applicationIcon,
             Text = "dsh-launcher: starting",
             Visible = true,
             ContextMenuStrip = _menu
@@ -63,6 +65,19 @@ internal sealed class TrayApplicationContext : ApplicationContext
         var item = new ToolStripMenuItem(text);
         item.Click += handler;
         return item;
+    }
+
+    private static Icon LoadApplicationIcon()
+    {
+        using var stream = typeof(TrayApplicationContext).Assembly.GetManifestResourceStream(
+            "DshLauncher.Assets.dsh-launcher.ico");
+        if (stream is null)
+        {
+            return (Icon)SystemIcons.Application.Clone();
+        }
+
+        using var icon = new Icon(stream);
+        return (Icon)icon.Clone();
     }
 
     private async void HandleOpenClick(object? sender, EventArgs args)
@@ -389,6 +404,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _supervisor.Dispose();
         _notifyIcon.Visible = false;
         _notifyIcon.Dispose();
+        _applicationIcon.Dispose();
         _menu.Dispose();
         _controlCancellation.Dispose();
         _logger.Info("Tray instance stopped.");

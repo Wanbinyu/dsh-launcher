@@ -1,4 +1,4 @@
-#define MyAppVersion "0.3.3"
+#define MyAppVersion "0.3.4"
 
 [Setup]
 AppId={{B42DAA6B-4D4A-4F8E-AE8E-7E2C8C6C8D11}
@@ -19,6 +19,7 @@ OutputBaseFilename=dsh-launcher-setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+SetupIconFile=..\assets\dsh-launcher.ico
 ChangesEnvironment=yes
 UninstallDisplayIcon={app}\dsh-launcher.exe
 

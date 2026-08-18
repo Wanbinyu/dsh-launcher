@@ -2,6 +2,8 @@
 
 [简体中文](README.md) | [English](README.en.md)
 
+<p align="center"><img src="assets/dsh-launcher.png" alt="dsh-launcher 图标" width="112"></p>
+
 [![许可证：MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 面向 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的 Windows 快捷启动器。输入 `dsh` 或 `deepseek`，后台启动 Harness，服务就绪后自动打开网页；进程、日志和状态由系统托盘管理。
@@ -16,6 +18,7 @@
 - `dsh.exe`、`deepseek.exe` 两个入口，双击桌面快捷方式也可以启动。
 - 自动检测 `127.0.0.1:3080`，服务就绪后打开默认浏览器。
 - 合并桌面、托盘和命令行发出的重复启动请求，只在同一次启动真正就绪后打开一次浏览器。
+- EXE、托盘、桌面快捷方式和安装器使用统一的多尺寸 Windows 图标。
 - 隐藏运行 Harness 子进程，退出托盘时清理整个子进程树。
 - Harness 标准输出和错误输出写入本地日志，便于排查启动失败。
 - Doctor 诊断 Harness CLI、Node.js、包管理器、Web profile、bundle 清单、重复核心运行时、端口和日志目录。
@@ -165,6 +168,8 @@ npx @deepseek-ai/dsh web
 ## 开发验证
 
 ```powershell
+powershell -ExecutionPolicy Bypass -File .\assets\build-icon.ps1
+
 powershell -ExecutionPolicy Bypass -File .\tests\smoke.ps1
 
 # 仅编译 .NET 项目
@@ -174,7 +179,7 @@ powershell -ExecutionPolicy Bypass -File .\tests\smoke.ps1
 powershell -ExecutionPolicy Bypass -File .\installer\build.ps1 -SkipInstaller
 ```
 
-smoke 测试覆盖默认补 `web`、显式参数透传、可配置 CLI 路径。Doctor 可用 `dsh doctor --json` 做无弹窗验证。打包脚本会在 `dist` 中生成便携版和安装包的 SHA256 文件。托盘运行需要在 Windows 桌面会话中验证。
+图标脚本从项目内 SVG 源文件生成 README 预览图和包含 9 种尺寸的 ICO。测试覆盖默认补 `web`、显式参数透传、可配置 CLI 路径、启动请求合并和图标资源嵌入。Doctor 可用 `dsh doctor --json` 做无弹窗验证。打包脚本会在 `dist` 中生成便携版和安装包的 SHA256 文件。托盘运行需要在 Windows 桌面会话中验证。
 
 ## 项目边界
 
