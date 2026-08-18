@@ -17,7 +17,8 @@ internal static class WebHealthChecker
                 url,
                 HttpCompletionOption.ResponseHeadersRead,
                 timeoutSource.Token).ConfigureAwait(false);
-            return new ProbeResult(true, (int)response.StatusCode);
+            var statusCode = (int)response.StatusCode;
+            return new ProbeResult(statusCode is >= 200 and < 400, statusCode);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {

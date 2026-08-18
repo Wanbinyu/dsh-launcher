@@ -1,3 +1,6 @@
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
 using DshLauncher;
 
 var runner = new RunnerSpec(
@@ -21,8 +24,58 @@ if (!runner.PrefixArguments.SequenceEqual(expectedArguments[..^1]))
 
 await VerifyNpxFallbackAsync();
 await VerifyStartRequestsAreCoalescedAsync();
+await VerifyWebHealthChecksAsync();
 VerifyIconResource();
 Console.WriteLine("DshLauncher tests passed.");
+
+static async Task VerifyWebHealthChecksAsync()
+{
+    foreach (var (statusCode, expectedResponding) in new[]
+    {
+        (200, true),
+        (302, true),
+        (404, false),
+        (500, false),
+    })
+    {
+        var result = await ProbeStatusAsync(statusCode);
+        if (result.Responding != expectedResponding || result.StatusCode != statusCode)
+        {
+            throw new InvalidOperationException(
+                $"HTTP {statusCode} readiness was {result.Responding}; expected {expectedResponding}.");
+        }
+    }
+}
+
+static async Task<WebHealthChecker.ProbeResult> ProbeStatusAsync(int statusCode)
+{
+    var listener = new TcpListener(IPAddress.Loopback, 0);
+    listener.Start();
+    try
+    {
+        var endpoint = (IPEndPoint)listener.LocalEndpoint;
+        var responseTask = Task.Run(async () =>
+        {
+            using var client = await listener.AcceptTcpClientAsync();
+            await using var stream = client.GetStream();
+            var request = new byte[4096];
+            _ = await stream.ReadAsync(request);
+            var response = Encoding.ASCII.GetBytes(
+                $"HTTP/1.1 {statusCode} Test\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+            await stream.WriteAsync(response);
+            await stream.FlushAsync();
+        });
+        var result = await WebHealthChecker.ProbeAsync(
+            new Uri($"http://127.0.0.1:{endpoint.Port}/"),
+            TimeSpan.FromSeconds(2));
+        await responseTask;
+        return result;
+    }
+    finally
+    {
+        listener.Stop();
+    }
+}
 
 static void VerifyIconResource()
 {

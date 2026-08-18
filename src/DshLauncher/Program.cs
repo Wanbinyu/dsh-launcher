@@ -111,10 +111,13 @@ internal static class Program
 
     private static int RunControlCommand(LauncherConfig config, string command)
     {
+        var timeout = IsTrayRunning(config.MutexName)
+            ? TimeSpan.FromSeconds(2)
+            : TimeSpan.FromMilliseconds(250);
         var response = ControlClient.TrySendAsync(
             config.PipeName,
             command,
-            TimeSpan.FromSeconds(2)).GetAwaiter().GetResult();
+            timeout).GetAwaiter().GetResult();
 
         if (response is not null)
         {

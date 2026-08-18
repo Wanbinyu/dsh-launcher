@@ -27,9 +27,7 @@ UninstallDisplayIcon={app}\dsh-launcher.exe
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional shortcuts:"; Flags: unchecked
 
 [Files]
-Source: "..\artifacts\publish\win-x64\dsh-launcher.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\artifacts\publish\win-x64\dsh-launcher.exe"; DestDir: "{app}"; DestName: "dsh.exe"; Flags: ignoreversion
-Source: "..\artifacts\publish\win-x64\dsh-launcher.exe"; DestDir: "{app}"; DestName: "deepseek.exe"; Flags: ignoreversion
+Source: "..\artifacts\publish\win-x64-installer\dsh-launcher.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\dsh.cmd"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\deepseek.cmd"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\dsh-launcher.ps1"; DestDir: "{app}"; Flags: ignoreversion
@@ -39,9 +37,13 @@ Source: "..\README.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\README.en.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 
+[InstallDelete]
+Type: files; Name: "{app}\dsh.exe"
+Type: files; Name: "{app}\deepseek.exe"
+
 [Icons]
-Name: "{autoprograms}\dsh-launcher"; Filename: "{app}\dsh.exe"; WorkingDir: "{app}"
-Name: "{autodesktop}\dsh-launcher"; Filename: "{app}\dsh.exe"; WorkingDir: "{app}"; Tasks: desktopicon
+Name: "{autoprograms}\dsh-launcher"; Filename: "{app}\dsh-launcher.exe"; WorkingDir: "{app}"
+Name: "{autodesktop}\dsh-launcher"; Filename: "{app}\dsh-launcher.exe"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [UninstallRun]
 Filename: "{app}\dsh-launcher.exe"; Parameters: "exit"; Flags: runhidden waituntilterminated; RunOnceId: "StopDshLauncher"
@@ -149,12 +151,14 @@ var
 begin
   Result := '';
   LauncherPath := ExpandConstant('{app}\dsh-launcher.exe');
-  if FileExists(LauncherPath) and
-     GetVersionNumbers(LauncherPath, VersionMS, VersionLS) and
-     ((VersionMS > $00000003) or
-      ((VersionMS = $00000003) and (VersionLS >= $00030000))) then
+  if FileExists(LauncherPath) then
   begin
-    Exec(LauncherPath, 'exit', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    if GetVersionNumbers(LauncherPath, VersionMS, VersionLS) and
+       ((VersionMS > $00000003) or
+        ((VersionMS = $00000003) and (VersionLS >= $00030000))) then
+      Exec(LauncherPath, 'exit', '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
+    else
+      Exec(LauncherPath, 'stop', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
     Sleep(500);
   end;
 end;

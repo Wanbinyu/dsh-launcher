@@ -21,11 +21,13 @@ if ([string]::IsNullOrWhiteSpace($dotnet) -or -not (Test-Path -LiteralPath $dotn
 
 $project = Join-Path $root 'src\DshLauncher\DshLauncher.csproj'
 $publishDirectory = Join-Path $root 'artifacts\publish\win-x64'
+$installerPublishDirectory = Join-Path $root 'artifacts\publish\win-x64-installer'
 $distDirectory = Join-Path $root 'dist'
-New-Item -ItemType Directory -Force -Path $publishDirectory, $distDirectory | Out-Null
+New-Item -ItemType Directory -Force -Path $publishDirectory, $installerPublishDirectory, $distDirectory | Out-Null
 
 & $dotnet publish $project -c Release -r win-x64 --self-contained true `
     -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
+    -p:EnableCompressionInSingleFile=true `
     -p:DebugType=None -p:DebugSymbols=false -o $publishDirectory --nologo
 if ($LASTEXITCODE -ne 0) {
     throw "dotnet publish failed with exit code $LASTEXITCODE."
@@ -38,6 +40,14 @@ Set-Content -LiteralPath (Join-Path $distDirectory 'dsh-launcher.exe.sha256') -V
 if ($SkipInstaller) {
     Write-Host "Published portable executable: $publishDirectory\dsh-launcher.exe"
     exit 0
+}
+
+& $dotnet publish $project -c Release -r win-x64 --self-contained true `
+    -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
+    -p:EnableCompressionInSingleFile=false `
+    -p:DebugType=None -p:DebugSymbols=false -o $installerPublishDirectory --nologo
+if ($LASTEXITCODE -ne 0) {
+    throw "dotnet publish for the installer failed with exit code $LASTEXITCODE."
 }
 
 $iscc = $env:ISCC_EXE
