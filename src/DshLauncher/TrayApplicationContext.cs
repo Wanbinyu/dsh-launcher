@@ -9,6 +9,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private readonly LauncherConfig _config;
     private readonly LauncherLogger _logger;
     private readonly ProcessSupervisor _supervisor;
+    private readonly StartCoordinator _startCoordinator;
     private readonly NotifyIcon _notifyIcon;
     private readonly ContextMenuStrip _menu;
     private readonly SynchronizationContext _uiContext;
@@ -16,13 +17,16 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private bool _exiting;
     private string _status = "starting";
 
-    public TrayApplicationContext(LauncherConfig config, LauncherLogger logger)
+    public TrayApplicationContext(LauncherConfig config, LauncherLogger logger, bool openBrowserOnStart)
     {
         _config = config;
         _logger = logger;
         _uiContext = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
         _supervisor = new ProcessSupervisor(config, logger);
         _supervisor.ProcessExited += HandleProcessExited;
+        _startCoordinator = new StartCoordinator(
+            () => _supervisor.StartAsync(),
+            OpenBrowser);
 
         _menu = CreateMenu();
         _notifyIcon = new NotifyIcon
@@ -36,13 +40,13 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
         _logger.Info($"Tray instance started. Web URL: {_config.WebUrl}.");
         _ = RunControlServerAsync();
-        _ = StartAndOpenAsync(openBrowser: true, showErrors: true);
+        _ = StartAndOpenAsync(openBrowserOnStart, showErrors: true);
     }
 
     private ContextMenuStrip CreateMenu()
     {
         var menu = new ContextMenuStrip();
-        menu.Items.Add(CreateMenuItem("启动 / Start", async (_, _) => await StartAndOpenAsync(true, true)));
+        menu.Items.Add(CreateMenuItem("启动 / Start", async (_, _) => await StartAndOpenAsync(_config.AutoOpen, true)));
         menu.Items.Add(CreateMenuItem("打开网页 / Open web", HandleOpenClick));
         menu.Items.Add(CreateMenuItem("查看状态 / Status", HandleStatusClick));
         menu.Items.Add(CreateMenuItem("重启 / Restart", async (_, _) => await RestartAsync()));
@@ -63,17 +67,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
     private async void HandleOpenClick(object? sender, EventArgs args)
     {
-        try
-        {
-            BrowserLauncher.Open(_config.WebUrl);
-        }
-        catch (Exception exception)
-        {
-            _logger.Error("Could not open the web browser", exception);
-            ShowError($"无法打开浏览器 / Could not open the browser:\n{exception.Message}");
-        }
-
-        await Task.CompletedTask;
+        await StartAndOpenAsync(openBrowser: true, showErrors: true);
     }
 
     private void HandleStatusClick(object? sender, EventArgs args)
@@ -113,16 +107,17 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
     private async Task<string> StartAndOpenAsync(bool openBrowser, bool showErrors)
     {
-        SetStatus("starting");
+        var request = _startCoordinator.Request(openBrowser);
+        if (request.IsOwner)
+        {
+            SetStatus("starting");
+        }
+
         try
         {
-            var result = await _supervisor.StartAsync();
-            if (result.Ready && openBrowser && _config.AutoOpen)
-            {
-                BrowserLauncher.Open(_config.WebUrl);
-            }
+            var result = await request.Completion;
 
-            if (result.Exited)
+            if (request.IsOwner && result.Exited)
             {
                 SetStatus("stopped");
                 if (showErrors)
@@ -130,11 +125,11 @@ internal sealed class TrayApplicationContext : ApplicationContext
                     ShowError(result.Message);
                 }
             }
-            else if (result.Ready)
+            else if (request.IsOwner && result.Ready)
             {
                 SetStatus("running");
             }
-            else
+            else if (request.IsOwner)
             {
                 SetStatus("starting");
             }
@@ -143,16 +138,23 @@ internal sealed class TrayApplicationContext : ApplicationContext
         }
         catch (OperationCanceledException)
         {
-            SetStatus("stopped");
+            if (request.IsOwner)
+            {
+                SetStatus("stopped");
+            }
+
             return "Start cancelled.";
         }
         catch (Exception exception)
         {
             _logger.Error("Could not start DeepSeek Harness", exception);
-            SetStatus("error");
-            if (showErrors)
+            if (request.IsOwner)
             {
-                ShowError($"启动 DeepSeek Harness 失败 / Could not start DeepSeek Harness:\n{exception.Message}");
+                SetStatus("error");
+                if (showErrors)
+                {
+                    ShowError($"启动 DeepSeek Harness 失败 / Could not start DeepSeek Harness:\n{exception.Message}");
+                }
             }
 
             return $"Could not start DeepSeek Harness: {exception.Message}";
@@ -240,14 +242,35 @@ internal sealed class TrayApplicationContext : ApplicationContext
     {
         return command.ToLowerInvariant() switch
         {
-            "start" => await StartAndOpenAsync(openBrowser: true, showErrors: false),
+            "start" or "activate" => QueueStart(_config.AutoOpen),
+            "open" or "activate-open" => QueueStart(openBrowser: true),
             "restart" => await RestartFromControlAsync(),
             "stop" => await StopFromControlAsync(),
+            "exit" => QueueExit(),
             "status" => BuildStatusMessage().Replace(Environment.NewLine, " | "),
-            "open" => OpenFromControl(),
             "logs" => OpenLogsFromControl(),
             _ => $"Unknown launcher command: {command}"
         };
+    }
+
+    private string QueueStart(bool openBrowser)
+    {
+        _ = StartAndOpenAsync(openBrowser, showErrors: false);
+        return openBrowser
+            ? $"DeepSeek Harness will open when {_config.WebUrl} is ready."
+            : "DeepSeek Harness start requested.";
+    }
+
+    private string QueueExit()
+    {
+        _ = ExitAfterControlResponseAsync();
+        return "Tray exit requested.";
+    }
+
+    private async Task ExitAfterControlResponseAsync()
+    {
+        await Task.Delay(200).ConfigureAwait(false);
+        _uiContext.Post(_ => ExitApplication(), null);
     }
 
     private async Task<string> RestartFromControlAsync()
@@ -262,17 +285,17 @@ internal sealed class TrayApplicationContext : ApplicationContext
         return "DeepSeek Harness stopped.";
     }
 
-    private string OpenFromControl()
+    private void OpenBrowser()
     {
         try
         {
             BrowserLauncher.Open(_config.WebUrl);
-            return $"Opened {_config.WebUrl}";
+            _logger.Info($"Opened web browser at {_config.WebUrl}.");
         }
         catch (Exception exception)
         {
             _logger.Error("Could not open the web browser", exception);
-            return $"Could not open the browser: {exception.Message}";
+            ShowError($"无法打开浏览器 / Could not open the browser:\n{exception.Message}");
         }
     }
 

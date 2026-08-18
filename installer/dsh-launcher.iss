@@ -1,4 +1,4 @@
-#define MyAppVersion "0.3.2"
+#define MyAppVersion "0.3.3"
 
 [Setup]
 AppId={{B42DAA6B-4D4A-4F8E-AE8E-7E2C8C6C8D11}
@@ -43,7 +43,7 @@ Name: "{autoprograms}\dsh-launcher"; Filename: "{app}\dsh.exe"; WorkingDir: "{ap
 Name: "{autodesktop}\dsh-launcher"; Filename: "{app}\dsh.exe"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [UninstallRun]
-Filename: "{app}\dsh-launcher.exe"; Parameters: "stop"; Flags: runhidden waituntilterminated; RunOnceId: "StopDshLauncher"
+Filename: "{app}\dsh-launcher.exe"; Parameters: "exit"; Flags: runhidden waituntilterminated; RunOnceId: "StopDshLauncher"
 
 [Code]
 function NormalizePathEntry(const Value: string): string;
@@ -138,6 +138,24 @@ procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssPostInstall then
     AddToUserPath(ExpandConstant('{app}'));
+end;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  ResultCode: Integer;
+  LauncherPath: string;
+  VersionMS, VersionLS: Cardinal;
+begin
+  Result := '';
+  LauncherPath := ExpandConstant('{app}\dsh-launcher.exe');
+  if FileExists(LauncherPath) and
+     GetVersionNumbers(LauncherPath, VersionMS, VersionLS) and
+     ((VersionMS > $00000003) or
+      ((VersionMS = $00000003) and (VersionLS >= $00030000))) then
+  begin
+    Exec(LauncherPath, 'exit', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    Sleep(500);
+  end;
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);

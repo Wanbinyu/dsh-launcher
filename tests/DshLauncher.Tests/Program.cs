@@ -20,7 +20,42 @@ if (!runner.PrefixArguments.SequenceEqual(expectedArguments[..^1]))
 }
 
 await VerifyNpxFallbackAsync();
+await VerifyStartRequestsAreCoalescedAsync();
 Console.WriteLine("DshLauncher tests passed.");
+
+static async Task VerifyStartRequestsAreCoalescedAsync()
+{
+    var startCompletion = new TaskCompletionSource<StartResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+    var startCalls = 0;
+    var browserCalls = 0;
+    var coordinator = new StartCoordinator(
+        () =>
+        {
+            startCalls++;
+            return startCompletion.Task;
+        },
+        () => browserCalls++);
+
+    var automaticStart = coordinator.Request(openBrowser: false);
+    var trayOpen = coordinator.Request(openBrowser: true);
+    if (!automaticStart.IsOwner || trayOpen.IsOwner ||
+        !ReferenceEquals(automaticStart.Completion, trayOpen.Completion))
+    {
+        throw new InvalidOperationException("Concurrent start requests were not coalesced.");
+    }
+
+    startCompletion.SetResult(new StartResult(
+        Ready: true,
+        Exited: false,
+        ExitCode: null,
+        Message: "ready"));
+    await Task.WhenAll(automaticStart.Completion, trayOpen.Completion);
+    if (startCalls != 1 || browserCalls != 1)
+    {
+        throw new InvalidOperationException(
+            $"Expected one start and one browser open, got {startCalls} starts and {browserCalls} opens.");
+    }
+}
 
 static async Task VerifyNpxFallbackAsync()
 {

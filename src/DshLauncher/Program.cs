@@ -22,9 +22,9 @@ internal static class Program
     private static int Run(string[] args)
     {
         var command = args.FirstOrDefault()?.Trim().ToLowerInvariant();
-        if (command == "--tray")
+        if (command is "--tray" or "--tray-open")
         {
-            return RunTray();
+            return RunTray(forceOpen: command == "--tray-open");
         }
 
         var config = LauncherConfig.Load();
@@ -38,7 +38,7 @@ internal static class Program
             return RunDoctor(config, args.Skip(1).ToArray());
         }
 
-        if (args.Length == 1 && command is ("stop" or "restart" or "status" or "open" or "logs"))
+        if (args.Length == 1 && command is ("stop" or "restart" or "status" or "open" or "logs" or "exit"))
         {
             return RunControlCommand(config, command);
         }
@@ -51,7 +51,7 @@ internal static class Program
         return RunForeground(config, args);
     }
 
-    private static int RunTray()
+    private static int RunTray(bool forceOpen)
     {
         var config = LauncherConfig.Load();
         using var mutex = new Mutex(initiallyOwned: true, config.MutexName, out var createdNew);
@@ -62,23 +62,26 @@ internal static class Program
 
         ApplicationConfiguration.Initialize();
         using var logger = LauncherLogger.Create(config.LogDirectory);
-        using var context = new TrayApplicationContext(config, logger);
+        using var context = new TrayApplicationContext(config, logger, forceOpen || config.AutoOpen);
         Application.Run(context);
         return 0;
     }
 
-    private static int BootstrapTray(LauncherConfig config)
+    private static int BootstrapTray(LauncherConfig config, bool forceOpen = false)
     {
-        var existingResponse = ControlClient.TrySendAsync(
-            config.PipeName,
-            "start",
-            TimeSpan.FromMilliseconds(250)).GetAwaiter().GetResult();
-        if (existingResponse is not null)
+        if (IsTrayRunning(config.MutexName))
         {
-            return 0;
+            var existingResponse = ControlClient.TrySendAsync(
+                config.PipeName,
+                forceOpen ? "activate-open" : "activate",
+                TimeSpan.FromSeconds(2)).GetAwaiter().GetResult();
+            if (existingResponse is not null || IsTrayRunning(config.MutexName))
+            {
+                return 0;
+            }
         }
 
-        var self = GetSelfInvocation();
+        var self = GetSelfInvocation(forceOpen ? "--tray-open" : "--tray");
         var process = Process.Start(self);
         if (process is null)
         {
@@ -86,6 +89,24 @@ internal static class Program
         }
 
         return 0;
+    }
+
+    private static bool IsTrayRunning(string mutexName)
+    {
+        try
+        {
+            if (!Mutex.TryOpenExisting(mutexName, out var mutex))
+            {
+                return false;
+            }
+
+            mutex.Dispose();
+            return true;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return true;
+        }
     }
 
     private static int RunControlCommand(LauncherConfig config, string command)
@@ -112,8 +133,7 @@ internal static class Program
 
         if (command == "open")
         {
-            BrowserLauncher.Open(config.WebUrl);
-            return 0;
+            return BootstrapTray(config, forceOpen: true);
         }
 
         if (command == "logs")
@@ -229,7 +249,7 @@ internal static class Program
         }
     }
 
-    private static ProcessStartInfo GetSelfInvocation()
+    private static ProcessStartInfo GetSelfInvocation(string trayArgument)
     {
         var processPath = Environment.ProcessPath ?? Process.GetCurrentProcess().MainModule?.FileName;
         if (string.IsNullOrWhiteSpace(processPath))
@@ -256,7 +276,7 @@ internal static class Program
             startInfo.FileName = processPath;
         }
 
-        startInfo.ArgumentList.Add("--tray");
+        startInfo.ArgumentList.Add(trayArgument);
         return startInfo;
     }
 

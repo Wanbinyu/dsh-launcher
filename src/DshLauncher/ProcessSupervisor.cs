@@ -42,9 +42,11 @@ internal sealed class ProcessSupervisor : IDisposable
         try
         {
             ThrowIfDisposed();
-            if (GetRunningProcess() is not null)
+            var runningProcess = GetRunningProcess();
+            if (runningProcess is not null)
             {
-                return new StartResult(true, false, null, "DeepSeek Harness is already running.");
+                _logger.Info($"Harness process {runningProcess.Id} is already running; waiting for {_config.WebUrl}.");
+                return await WaitForWebAsync(runningProcess, cancellationToken).ConfigureAwait(true);
             }
 
             var existingWeb = await WebHealthChecker.ProbeAsync(
@@ -80,39 +82,7 @@ internal sealed class ProcessSupervisor : IDisposable
             _ = PumpOutputAsync(process.StandardOutput, "STDOUT");
             _ = PumpOutputAsync(process.StandardError, "STDERR");
 
-            var deadline = DateTimeOffset.UtcNow + _config.StartupTimeout;
-            while (DateTimeOffset.UtcNow < deadline)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (HasExited(process, out var exitCode))
-                {
-                    return new StartResult(
-                        Ready: false,
-                        Exited: true,
-                        ExitCode: exitCode,
-                        Message: $"DeepSeek Harness exited before the web server became ready (exit code {exitCode}).");
-                }
-
-                var webProbe = await WebHealthChecker.ProbeAsync(
-                    _config.WebUrl,
-                    TimeSpan.FromMilliseconds(500),
-                    cancellationToken).ConfigureAwait(true);
-                if (webProbe.Responding)
-                {
-                    var status = webProbe.StatusCode.HasValue ? $" (HTTP {webProbe.StatusCode.Value})" : string.Empty;
-                    _logger.Info($"Web server is ready at {_config.WebUrl}{status}.");
-                    return new StartResult(true, false, null, $"DeepSeek Harness is ready at {_config.WebUrl}.");
-                }
-
-                await Task.Delay(250, cancellationToken).ConfigureAwait(true);
-            }
-
-            _logger.Info($"Harness is still starting; {_config.WebUrl} did not respond within {_config.StartupTimeout.TotalSeconds:0} seconds.");
-            return new StartResult(
-                Ready: false,
-                Exited: false,
-                ExitCode: null,
-                Message: $"DeepSeek Harness is still starting. Open {_config.WebUrl} when it is ready.");
+            return await WaitForWebAsync(process, cancellationToken).ConfigureAwait(true);
         }
         finally
         {
@@ -303,6 +273,43 @@ internal sealed class ProcessSupervisor : IDisposable
                 throw new ObjectDisposedException(nameof(ProcessSupervisor));
             }
         }
+    }
+
+    private async Task<StartResult> WaitForWebAsync(Process process, CancellationToken cancellationToken)
+    {
+        var deadline = DateTimeOffset.UtcNow + _config.StartupTimeout;
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (HasExited(process, out var exitCode))
+            {
+                return new StartResult(
+                    Ready: false,
+                    Exited: true,
+                    ExitCode: exitCode,
+                    Message: $"DeepSeek Harness exited before the web server became ready (exit code {exitCode}).");
+            }
+
+            var webProbe = await WebHealthChecker.ProbeAsync(
+                _config.WebUrl,
+                TimeSpan.FromMilliseconds(500),
+                cancellationToken).ConfigureAwait(true);
+            if (webProbe.Responding)
+            {
+                var status = webProbe.StatusCode.HasValue ? $" (HTTP {webProbe.StatusCode.Value})" : string.Empty;
+                _logger.Info($"Web server is ready at {_config.WebUrl}{status}.");
+                return new StartResult(true, false, null, $"DeepSeek Harness is ready at {_config.WebUrl}.");
+            }
+
+            await Task.Delay(250, cancellationToken).ConfigureAwait(true);
+        }
+
+        _logger.Info($"Harness is still starting; {_config.WebUrl} did not respond within {_config.StartupTimeout.TotalSeconds:0} seconds.");
+        return new StartResult(
+            Ready: false,
+            Exited: false,
+            ExitCode: null,
+            Message: $"DeepSeek Harness is still starting. Open {_config.WebUrl} when it is ready.");
     }
 
     internal static RunnerSpec AddWebCommand(RunnerSpec runner)

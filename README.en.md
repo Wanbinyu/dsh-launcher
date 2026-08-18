@@ -15,6 +15,7 @@ A Windows launcher for [DeepSeek Harness](https://github.com/deepseek-ai/deepsee
 - Tray menu for start, open web, status, restart, stop, logs, and exit.
 - Installs both `dsh.exe` and `deepseek.exe`; a desktop shortcut can launch it directly.
 - Probes `127.0.0.1:3080` and opens the default browser when the server responds.
+- Coalesces repeated desktop, tray, and CLI requests, then opens the browser once after the shared startup is ready.
 - Hides the Harness child process and kills the entire child tree on exit.
 - Writes Harness stdout and stderr to local logs for troubleshooting.
 - Doctor checks the Harness CLI, Node.js, package managers, Web profile, bundle manifests, duplicate core runtimes, endpoint, port, and log directory.
@@ -71,6 +72,7 @@ dsh restart     # restart Harness and open the web UI
 dsh status      # show status and PID in a dialog
 dsh open        # open the configured web URL
 dsh logs        # open the log directory
+dsh exit        # stop Harness and exit the tray
 dsh doctor      # show the complete diagnostic report
 ```
 
@@ -86,6 +88,8 @@ dsh doctor --json --report .\dsh-doctor.json
 Reports remove URL credentials, query strings, fragments, and common token, password, and API-key assignments. Give a report a quick review before sharing it. Doctor exits with code `1` when it finds a blocking problem and `0` otherwise, so it can be used in scripts and CI. The tray menu also includes Copy diagnostics.
 
 Double-click the `dsh-launcher` desktop or Start Menu shortcut to get the same behavior as `dsh`. Selecting Exit from the tray stops both Harness and the tray process.
+
+The tray icon appears immediately while Harness starts. Double-clicking it during startup waits for the same operation; it does not open an unavailable `127.0.0.1` page or start another Harness process.
 
 When the configured web URL is already responding before startup, the launcher does not start a second Harness process. It reuses the existing service and opens the browser, which also avoids duplicating a process when the port is occupied by another service.
 

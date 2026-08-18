@@ -61,7 +61,7 @@ try {
 
         & $doctorCommand doctor --json --report $doctorReport 2>&1 | Out-Null
         $savedJson = Get-Content -LiteralPath $doctorReport -Raw | ConvertFrom-Json
-        if ($savedJson.launcherVersion -ne '0.3.2') {
+        if ($savedJson.launcherVersion -ne '0.3.3') {
             throw 'doctor did not save the expected JSON report'
         }
         if (@($savedJson.checks.id) -notcontains 'bundle-manifests') {
