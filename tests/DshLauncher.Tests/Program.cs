@@ -22,7 +22,32 @@ if (!runner.PrefixArguments.SequenceEqual(expectedArguments[..^1]))
     throw new InvalidOperationException("Preparing the web runner mutated the original runner.");
 }
 
+var rc8Runner = ProcessSupervisor.AddWebCommand(runner with { DshVersion = "0.1.0-rc.8" });
+var expectedRc8Arguments = new[] { "--yes", "@deepseek-ai/dsh", "web", "--no-open" };
+if (!rc8Runner.PrefixArguments.SequenceEqual(expectedRc8Arguments))
+{
+    throw new InvalidOperationException(
+        $"Expected '{string.Join(' ', expectedRc8Arguments)}', got '{string.Join(' ', rc8Runner.PrefixArguments)}'.");
+}
+
+foreach (var version in new[] { "0.1.0-rc.8", "0.1.0-rc.9", "0.1.0", "0.1.1-rc.1", "0.1.1", "1.0.0" })
+{
+    if (!ProcessSupervisor.SupportsNoOpen(version))
+    {
+        throw new InvalidOperationException($"Expected Harness {version} to support --no-open.");
+    }
+}
+
+foreach (var version in new string?[] { null, "", "0.1.0-rc.7", "0.0.9", "invalid" })
+{
+    if (ProcessSupervisor.SupportsNoOpen(version))
+    {
+        throw new InvalidOperationException($"Did not expect Harness {version} to support --no-open.");
+    }
+}
+
 await VerifyNpxFallbackAsync();
+await VerifyLocalPackageVersionAsync();
 await VerifyStartRequestsAreCoalescedAsync();
 await VerifyWebHealthChecksAsync();
 VerifyIconResource();
@@ -176,6 +201,57 @@ static async Task VerifyNpxFallbackAsync()
         if (!string.Equals(startInfo.Environment["PATH"], toolDirectory, StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException("ProcessLauncher did not apply the sanitized child PATH.");
+        }
+    }
+    finally
+    {
+        Environment.CurrentDirectory = previousCurrentDirectory;
+        Environment.SetEnvironmentVariable("PATH", previousPath);
+        Environment.SetEnvironmentVariable("DEEPSEEK_HARNESS_DIR", previousHarnessDirectory);
+        Environment.SetEnvironmentVariable("DEEPSEEK_DSH_BIN", previousBinary);
+        Environment.SetEnvironmentVariable("DSH_HOME", previousDshHome);
+        Directory.Delete(testDirectory, recursive: true);
+    }
+}
+
+static async Task VerifyLocalPackageVersionAsync()
+{
+    var testDirectory = Path.Combine(Path.GetTempPath(), $"dsh-launcher-package-tests-{Guid.NewGuid():N}");
+    var previousPath = Environment.GetEnvironmentVariable("PATH");
+    var previousHarnessDirectory = Environment.GetEnvironmentVariable("DEEPSEEK_HARNESS_DIR");
+    var previousBinary = Environment.GetEnvironmentVariable("DEEPSEEK_DSH_BIN");
+    var previousDshHome = Environment.GetEnvironmentVariable("DSH_HOME");
+    var previousCurrentDirectory = Environment.CurrentDirectory;
+    Directory.CreateDirectory(testDirectory);
+    try
+    {
+        var toolDirectory = Path.Combine(testDirectory, "tools");
+        var packageDirectory = Path.Combine(testDirectory, "node_modules", "@deepseek-ai", "dsh");
+        Directory.CreateDirectory(toolDirectory);
+        Directory.CreateDirectory(Path.Combine(packageDirectory, "lib"));
+        File.WriteAllText(Path.Combine(toolDirectory, "node.cmd"), "@exit /b 0");
+        File.WriteAllText(Path.Combine(packageDirectory, "lib", "bin.js"), string.Empty);
+        File.WriteAllText(
+            Path.Combine(packageDirectory, "package.json"),
+            "{\"name\":\"@deepseek-ai/dsh\",\"version\":\"0.1.0-rc.8\"}");
+        Environment.SetEnvironmentVariable("PATH", toolDirectory);
+        Environment.SetEnvironmentVariable("DEEPSEEK_HARNESS_DIR", null);
+        Environment.SetEnvironmentVariable("DEEPSEEK_DSH_BIN", null);
+        Environment.SetEnvironmentVariable("DSH_HOME", Path.Combine(testDirectory, "dsh-home"));
+        Environment.CurrentDirectory = testDirectory;
+
+        using var logger = LauncherLogger.Create(Path.Combine(testDirectory, "logs"));
+        var resolved = await new RunnerResolver(logger).ResolveAsync();
+        if (resolved.DshVersion != "0.1.0-rc.8")
+        {
+            throw new InvalidOperationException(
+                $"Expected local Harness version 0.1.0-rc.8, got {resolved.DshVersion ?? "unknown"}.");
+        }
+
+        var localWebRunner = ProcessSupervisor.AddWebCommand(resolved);
+        if (!localWebRunner.PrefixArguments.TakeLast(2).SequenceEqual(new[] { "web", "--no-open" }))
+        {
+            throw new InvalidOperationException("Expected an rc.8 local package to disable Harness browser opening.");
         }
     }
     finally

@@ -73,6 +73,75 @@ function Test-SamePath {
     )
 }
 
+function Get-PackageVersion {
+    param(
+        [string]$PackageJson,
+        [bool]$RequireDshPackage = $false
+    )
+
+    try {
+        $package = Get-Content -LiteralPath $PackageJson -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+        if ($RequireDshPackage -and $package.name -ne '@deepseek-ai/dsh') {
+            return $null
+        }
+
+        return [string]$package.version
+    } catch {
+        return $null
+    }
+}
+
+function Find-DshPackageVersion {
+    param([string]$EntryPath)
+
+    $directory = Split-Path -Path (Get-NormalizedPath -Path $EntryPath) -Parent
+    while (-not [string]::IsNullOrWhiteSpace($directory)) {
+        $packageJson = Join-Path $directory 'package.json'
+        if (Test-Path -LiteralPath $packageJson -PathType Leaf) {
+            $version = Get-PackageVersion -PackageJson $packageJson -RequireDshPackage $true
+            if (-not [string]::IsNullOrWhiteSpace($version)) {
+                return $version
+            }
+        }
+
+        $parent = Split-Path -Path $directory -Parent
+        if ([string]::IsNullOrWhiteSpace($parent) -or (Test-SamePath -Left $parent -Right $directory)) {
+            break
+        }
+
+        $directory = $parent
+    }
+
+    return $null
+}
+
+function Test-SupportsNoOpen {
+    param([AllowNull()][string]$Version)
+
+    if ([string]::IsNullOrWhiteSpace($Version)) {
+        return $false
+    }
+
+    $normalized = $Version.Trim().TrimStart('v').Split('+')[0]
+    if ($normalized -notmatch '^(?<core>\d+\.\d+\.\d+)(?:-(?<pre>.+))?$') {
+        return $false
+    }
+
+    $core = [version]$Matches.core
+    $baseline = [version]'0.1.0'
+    if ($core -gt $baseline) {
+        return $true
+    }
+    if ($core -lt $baseline) {
+        return $false
+    }
+    if ([string]::IsNullOrWhiteSpace($Matches.pre)) {
+        return $true
+    }
+
+    return $Matches.pre -match '^rc\.(?<candidate>\d+)$' -and [int]$Matches.candidate -ge 8
+}
+
 function Get-RunnerFromSource {
     $configuredDirectory = $env:DEEPSEEK_HARNESS_DIR
     if ([string]::IsNullOrWhiteSpace($configuredDirectory)) {
@@ -99,6 +168,7 @@ function Get-RunnerFromSource {
         PrefixArguments  = @('dsh')
         WorkingDirectory = $harnessDirectory
         Description      = "source tree at $harnessDirectory"
+        DshVersion       = Get-PackageVersion -PackageJson $packageJson
     }
 }
 
@@ -125,6 +195,7 @@ function Get-RunnerFromConfiguredBinary {
             PrefixArguments  = @($binary)
             WorkingDirectory = (Get-Location).Path
             Description      = "configured JavaScript CLI at $binary"
+            DshVersion       = Find-DshPackageVersion -EntryPath $binary
         }
     }
 
@@ -133,6 +204,7 @@ function Get-RunnerFromConfiguredBinary {
         PrefixArguments  = @()
         WorkingDirectory = (Get-Location).Path
         Description      = "configured CLI at $binary"
+        DshVersion       = $null
     }
 }
 
@@ -232,6 +304,7 @@ function Get-Runner {
             PrefixArguments  = @($localEntry)
             WorkingDirectory = (Get-Location).Path
             Description      = "local @deepseek-ai/dsh package at $localEntry"
+            DshVersion       = Find-DshPackageVersion -EntryPath $localEntry
         }
     }
 
@@ -247,6 +320,7 @@ function Get-Runner {
             PrefixArguments  = @($globalEntry)
             WorkingDirectory = (Get-Location).Path
             Description      = "global @deepseek-ai/dsh package at $globalEntry"
+            DshVersion       = Find-DshPackageVersion -EntryPath $globalEntry
         }
     }
 
@@ -257,6 +331,7 @@ function Get-Runner {
             PrefixArguments  = @()
             WorkingDirectory = (Get-Location).Path
             Description      = "existing dsh command at $existingCommand"
+            DshVersion       = $null
         }
     }
 
@@ -265,11 +340,25 @@ function Get-Runner {
         throw 'Could not find a DeepSeek Harness source tree, an installed dsh CLI, or npx.'
     }
 
+    $publishedVersion = $null
+    $npm = Find-Executable -Names @('npm.cmd', 'npm.exe', 'npm')
+    if ($null -ne $npm) {
+        $versionOutput = @(& $npm 'view' '@deepseek-ai/dsh' 'version' '--json' 2>$null)
+        if ($LASTEXITCODE -eq 0 -and $versionOutput.Count -gt 0) {
+            try {
+                $publishedVersion = [string](($versionOutput -join [Environment]::NewLine) | ConvertFrom-Json)
+            } catch {
+                $publishedVersion = $null
+            }
+        }
+    }
+
     return [PSCustomObject]@{
         FilePath         = $npx
         PrefixArguments  = @('--yes', '@deepseek-ai/dsh')
         WorkingDirectory = (Get-Location).Path
         Description      = 'the @deepseek-ai/dsh package through npx'
+        DshVersion       = $publishedVersion
     }
 }
 
@@ -435,12 +524,15 @@ try {
         exit (Invoke-Doctor)
     }
 
+    $runner = Get-Runner
     if ($effectiveArguments.Count -eq 0) {
         $effectiveArguments = @('web')
         $openBrowser = Test-AutoOpenEnabled
+        if ($openBrowser -and (Test-SupportsNoOpen -Version $runner.DshVersion)) {
+            $effectiveArguments += '--no-open'
+        }
     }
 
-    $runner = Get-Runner
     $exitCode = 0
     Invoke-Runner -Runner $runner -RunnerArguments $effectiveArguments -OpenBrowser $openBrowser -ExitCode ([ref]$exitCode)
     exit $exitCode

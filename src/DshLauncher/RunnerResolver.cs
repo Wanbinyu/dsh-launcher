@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace DshLauncher;
 
 internal sealed class RunnerResolver
@@ -36,7 +38,8 @@ internal sealed class RunnerResolver
                 node,
                 new[] { localEntry },
                 Environment.CurrentDirectory,
-                $"local @deepseek-ai/dsh package at {localEntry}");
+                $"local @deepseek-ai/dsh package at {localEntry}",
+                DshVersion: FindDshPackageVersion(localEntry));
         }
 
         var installedEntry = FindInstalledPackageEntry();
@@ -52,7 +55,8 @@ internal sealed class RunnerResolver
                 node,
                 new[] { installedEntry },
                 Environment.CurrentDirectory,
-                $"installed @deepseek-ai/dsh package at {installedEntry}");
+                $"installed @deepseek-ai/dsh package at {installedEntry}",
+                DshVersion: FindDshPackageVersion(installedEntry));
         }
 
         var globalEntry = await FindGlobalPackageEntryAsync(cancellationToken).ConfigureAwait(false);
@@ -68,7 +72,8 @@ internal sealed class RunnerResolver
                 node,
                 new[] { globalEntry },
                 Environment.CurrentDirectory,
-                $"global @deepseek-ai/dsh package at {globalEntry}");
+                $"global @deepseek-ai/dsh package at {globalEntry}",
+                DshVersion: FindDshPackageVersion(globalEntry));
         }
 
         var existingCommand = FindExistingDshCommand();
@@ -87,6 +92,7 @@ internal sealed class RunnerResolver
             throw new InvalidOperationException("Could not find a DeepSeek Harness source tree, an installed dsh CLI, or npx.");
         }
 
+        var publishedVersion = await FindPublishedPackageVersionAsync(cancellationToken).ConfigureAwait(false);
         return new RunnerSpec(
             npx,
             new[] { "--yes", "--package=@deepseek-ai/dsh", "--", "dsh" },
@@ -95,7 +101,8 @@ internal sealed class RunnerResolver
             new Dictionary<string, string?>
             {
                 ["PATH"] = GetPathWithoutLauncherShims()
-            });
+            },
+            publishedVersion);
     }
 
     private RunnerSpec? GetRunnerFromSource()
@@ -124,7 +131,8 @@ internal sealed class RunnerResolver
             pnpm,
             new[] { "dsh" },
             harnessDirectory,
-            $"source tree at {harnessDirectory}");
+            $"source tree at {harnessDirectory}",
+            DshVersion: ReadPackageVersion(packageJson));
     }
 
     private RunnerSpec? GetRunnerFromConfiguredBinary()
@@ -148,7 +156,8 @@ internal sealed class RunnerResolver
                 node,
                 new[] { binary },
                 Environment.CurrentDirectory,
-                $"configured JavaScript CLI at {binary}");
+                $"configured JavaScript CLI at {binary}",
+                DshVersion: FindDshPackageVersion(binary));
         }
 
         return new RunnerSpec(
@@ -220,6 +229,103 @@ internal sealed class RunnerResolver
 
         var entry = Path.Combine(root, "@deepseek-ai", "dsh", "lib", "bin.js");
         return File.Exists(entry) ? Path.GetFullPath(entry) : null;
+    }
+
+    private async Task<string?> FindPublishedPackageVersionAsync(CancellationToken cancellationToken)
+    {
+        var npm = FindExecutable("npm");
+        if (npm is null)
+        {
+            return null;
+        }
+
+        var runner = new RunnerSpec(
+            npm,
+            new[] { "view", "@deepseek-ai/dsh", "version", "--json" },
+            Environment.CurrentDirectory,
+            "published @deepseek-ai/dsh version lookup");
+        try
+        {
+            var result = await ProcessLauncher.CaptureAsync(runner, cancellationToken).ConfigureAwait(false);
+            return result.ExitCode == 0 ? ParseVersionOutput(result.StandardOutput) : null;
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            _logger.Error("Could not inspect the published dsh version", exception);
+            return null;
+        }
+    }
+
+    private static string? ParseVersionOutput(string output)
+    {
+        var value = output.Trim();
+        if (value.Length == 0)
+        {
+            return null;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(value);
+            return document.RootElement.ValueKind == JsonValueKind.String
+                ? document.RootElement.GetString()
+                : null;
+        }
+        catch (JsonException)
+        {
+            return value.Trim('"');
+        }
+    }
+
+    private static string? FindDshPackageVersion(string entryPath)
+    {
+        var directory = Path.GetDirectoryName(Path.GetFullPath(entryPath));
+        while (!string.IsNullOrWhiteSpace(directory))
+        {
+            var packageJson = Path.Combine(directory, "package.json");
+            if (File.Exists(packageJson))
+            {
+                var version = ReadPackageVersion(packageJson, requireDshPackage: true);
+                if (version is not null)
+                {
+                    return version;
+                }
+            }
+
+            var parent = Directory.GetParent(directory)?.FullName;
+            if (string.IsNullOrWhiteSpace(parent) ||
+                string.Equals(parent, directory, StringComparison.OrdinalIgnoreCase))
+            {
+                break;
+            }
+
+            directory = parent;
+        }
+
+        return null;
+    }
+
+    private static string? ReadPackageVersion(string packageJson, bool requireDshPackage = false)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(packageJson));
+            var root = document.RootElement;
+            if (requireDshPackage &&
+                (!root.TryGetProperty("name", out var name) ||
+                 !string.Equals(name.GetString(), "@deepseek-ai/dsh", StringComparison.Ordinal)))
+            {
+                return null;
+            }
+
+            return root.TryGetProperty("version", out var version) && version.ValueKind == JsonValueKind.String
+                ? version.GetString()
+                : null;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException)
+        {
+            return null;
+        }
     }
 
     private string? FindExistingDshCommand()

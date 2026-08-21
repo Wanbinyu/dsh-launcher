@@ -314,9 +314,55 @@ internal sealed class ProcessSupervisor : IDisposable
 
     internal static RunnerSpec AddWebCommand(RunnerSpec runner)
     {
+        var arguments = runner.PrefixArguments.Append("web");
+        if (SupportsNoOpen(runner.DshVersion))
+        {
+            arguments = arguments.Append("--no-open");
+        }
+
         return runner with
         {
-            PrefixArguments = runner.PrefixArguments.Append("web").ToArray()
+            PrefixArguments = arguments.ToArray()
         };
+    }
+
+    internal static bool SupportsNoOpen(string? version)
+    {
+        if (string.IsNullOrWhiteSpace(version))
+        {
+            return false;
+        }
+
+        var normalized = version.Trim().TrimStart('v');
+        var metadataIndex = normalized.IndexOf('+');
+        if (metadataIndex >= 0)
+        {
+            normalized = normalized[..metadataIndex];
+        }
+
+        var prereleaseIndex = normalized.IndexOf('-');
+        var core = prereleaseIndex >= 0 ? normalized[..prereleaseIndex] : normalized;
+        if (!Version.TryParse(core, out var parsed))
+        {
+            return false;
+        }
+
+        var baseline = new Version(0, 1, 0);
+        var comparison = parsed.CompareTo(baseline);
+        if (comparison != 0)
+        {
+            return comparison > 0;
+        }
+
+        if (prereleaseIndex < 0)
+        {
+            return true;
+        }
+
+        const string rcPrefix = "rc.";
+        var prerelease = normalized[(prereleaseIndex + 1)..];
+        return prerelease.StartsWith(rcPrefix, StringComparison.OrdinalIgnoreCase) &&
+               int.TryParse(prerelease[rcPrefix.Length..], out var candidate) &&
+               candidate >= 8;
     }
 }

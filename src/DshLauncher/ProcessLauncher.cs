@@ -8,7 +8,8 @@ internal sealed record RunnerSpec(
     IReadOnlyList<string> PrefixArguments,
     string WorkingDirectory,
     string Description,
-    IReadOnlyDictionary<string, string?>? EnvironmentOverrides = null);
+    IReadOnlyDictionary<string, string?>? EnvironmentOverrides = null,
+    string? DshVersion = null);
 
 internal static class ProcessLauncher
 {
