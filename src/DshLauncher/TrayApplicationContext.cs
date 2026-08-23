@@ -15,6 +15,8 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private readonly ContextMenuStrip _menu;
     private readonly SynchronizationContext _uiContext;
     private readonly CancellationTokenSource _controlCancellation = new();
+    private StartupSplashForm? _startupSplash;
+    private Task<StartResult>? _splashOperation;
     private bool _exiting;
     private string _status = "starting";
 
@@ -123,6 +125,11 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private async Task<string> StartAndOpenAsync(bool openBrowser, bool showErrors)
     {
         var request = _startCoordinator.Request(openBrowser);
+        if (openBrowser)
+        {
+            ShowStartupSplash(request.Completion);
+        }
+
         if (request.IsOwner)
         {
             SetStatus("starting");
@@ -131,6 +138,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         try
         {
             var result = await request.Completion;
+            CloseStartupSplash(request.Completion);
 
             if (request.IsOwner && result.Exited)
             {
@@ -153,6 +161,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         }
         catch (OperationCanceledException)
         {
+            CloseStartupSplash(request.Completion);
             if (request.IsOwner)
             {
                 SetStatus("stopped");
@@ -162,6 +171,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         }
         catch (Exception exception)
         {
+            CloseStartupSplash(request.Completion);
             _logger.Error("Could not start DeepSeek Harness", exception);
             if (request.IsOwner)
             {
@@ -266,6 +276,48 @@ internal sealed class TrayApplicationContext : ApplicationContext
             "logs" => OpenLogsFromControl(),
             _ => $"Unknown launcher command: {command}"
         };
+    }
+
+    private void ShowStartupSplash(Task<StartResult> operation)
+    {
+        if (_exiting)
+        {
+            return;
+        }
+
+        _splashOperation = operation;
+        if (_startupSplash is null || _startupSplash.IsDisposed)
+        {
+            _startupSplash = new StartupSplashForm(_applicationIcon);
+            _startupSplash.Show();
+            return;
+        }
+
+        if (!_startupSplash.Visible)
+        {
+            _startupSplash.Show();
+        }
+
+        _startupSplash.Activate();
+    }
+
+    private void CloseStartupSplash(Task<StartResult>? operation = null)
+    {
+        if (operation is not null && !ReferenceEquals(_splashOperation, operation))
+        {
+            return;
+        }
+
+        _splashOperation = null;
+        var splash = _startupSplash;
+        _startupSplash = null;
+        if (splash is null || splash.IsDisposed)
+        {
+            return;
+        }
+
+        splash.Close();
+        splash.Dispose();
     }
 
     private string QueueStart(bool openBrowser)
@@ -392,6 +444,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
         _exiting = true;
         _controlCancellation.Cancel();
+        CloseStartupSplash();
         try
         {
             await _supervisor.StopAsync();

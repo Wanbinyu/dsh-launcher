@@ -14,8 +14,9 @@ A Windows launcher for [DeepSeek Harness](https://github.com/deepseek-ai/deepsee
 ## Features
 
 - Starts Harness in the background without holding the current terminal.
+- Shows startup progress immediately after a double-click, then closes it automatically once the web UI is ready and opened.
 - Tray menu for start, open web, status, restart, stop, logs, and exit.
-- Installs both `dsh.exe` and `deepseek.exe`; a desktop shortcut can launch it directly.
+- Provides both `dsh` and `deepseek` command entrypoints; a desktop shortcut can launch it directly.
 - Probes `127.0.0.1:3080` and opens the default browser when the server responds.
 - Detects the Harness version and passes `--no-open` to `rc.8` and newer releases so the CLI and launcher do not open duplicate tabs.
 - Coalesces repeated desktop, tray, and CLI requests, then opens the browser once after the shared startup is ready.
@@ -93,7 +94,7 @@ Reports remove URL credentials, query strings, fragments, and common token, pass
 
 Double-click the `dsh-launcher` desktop or Start Menu shortcut to get the same behavior as `dsh`. Selecting Exit from the tray stops both Harness and the tray process.
 
-The tray icon appears immediately while Harness starts. Double-clicking it during startup waits for the same operation; it does not open an unavailable `127.0.0.1` page or start another Harness process.
+The progress window and tray icon appear immediately while Harness starts. The window closes automatically after the ready web UI opens, and a longer-start hint appears when a cold start takes several seconds. Double-clicking the tray during startup waits for the same operation; it does not create multiple progress windows, open an unavailable `127.0.0.1` page, or start another Harness process.
 
 DeepSeek Harness `rc.8` and newer releases open the Web UI themselves. When the launcher supervises those versions in the background, it reads the installed package version and passes `--no-open`, then keeps ownership of readiness and opens one tab. `rc.7` keeps its original arguments.
 

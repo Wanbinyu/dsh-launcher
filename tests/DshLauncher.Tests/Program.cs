@@ -51,7 +51,38 @@ await VerifyLocalPackageVersionAsync();
 await VerifyStartRequestsAreCoalescedAsync();
 await VerifyWebHealthChecksAsync();
 VerifyIconResource();
+VerifyStartupSplash();
 Console.WriteLine("DshLauncher tests passed.");
+
+static void VerifyStartupSplash()
+{
+    using var form = new StartupSplashForm(System.Drawing.SystemIcons.Application);
+    if (form.ShowInTaskbar || !form.TopMost || form.MaximizeBox || form.MinimizeBox)
+    {
+        throw new InvalidOperationException("The startup progress window has unexpected window behavior.");
+    }
+
+    var controls = Descendants(form).ToArray();
+    var progress = controls.OfType<System.Windows.Forms.ProgressBar>().SingleOrDefault();
+    if (progress?.Style != System.Windows.Forms.ProgressBarStyle.Marquee ||
+        !controls.OfType<System.Windows.Forms.Label>().Any(label =>
+            label.Text.Contains("DeepSeek Harness 正在启动", StringComparison.Ordinal)))
+    {
+        throw new InvalidOperationException("The startup progress window is missing its progress UI.");
+    }
+}
+
+static IEnumerable<System.Windows.Forms.Control> Descendants(System.Windows.Forms.Control parent)
+{
+    foreach (System.Windows.Forms.Control child in parent.Controls)
+    {
+        yield return child;
+        foreach (var descendant in Descendants(child))
+        {
+            yield return descendant;
+        }
+    }
+}
 
 static async Task VerifyWebHealthChecksAsync()
 {
