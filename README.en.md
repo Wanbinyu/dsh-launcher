@@ -15,7 +15,7 @@ A Windows launcher for [DeepSeek Harness](https://github.com/deepseek-ai/deepsee
 
 | Platform | Version | Role |
 | --- | --- | --- |
-| Windows | `0.3.6` | Primary edition; starts and manages Harness locally. |
+| Windows | `0.3.7` | Primary edition; starts and manages Harness locally. |
 | Android | `0.1.0` | LAN client; connects to a Windows host and does not run Harness on the tablet. |
 
 The Android edition requires Android 10 or newer and must be used only on a trusted private network. Harness LAN mode currently has no authentication. See the [Android setup and security guide](android/README.en.md).
@@ -24,7 +24,9 @@ The Android edition requires Android 10 or newer and must be used only on a trus
 
 - Starts Harness in the background without holding the current terminal.
 - Shows startup progress immediately after a double-click, then closes it automatically once the web UI is ready and opened.
-- Tray menu for start, open web, status, restart, stop, logs, and exit.
+- Tray menu for start, open web, status, restart, stop, logs, optional support, and exit.
+- Manual launcher update checks plus an auto-check toggle; auto-check is enabled by default, contacts GitHub at most once per day, and only notifies instead of silently downloading or installing.
+- An optional local support window; donations are entirely voluntary, unlock nothing, make no network calls, and are not tracked.
 - Provides both `dsh` and `deepseek` command entrypoints; a desktop shortcut can launch it directly.
 - Probes `127.0.0.1:3080` and opens the default browser when the server responds.
 - Detects the Harness version and passes `--no-open` to `rc.8` and newer releases so the CLI and launcher do not open duplicate tabs.

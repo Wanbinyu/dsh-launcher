@@ -3,6 +3,14 @@ using System.Net.Sockets;
 using System.Text;
 using DshLauncher;
 
+if (args.Contains("--preview-sponsor", StringComparer.Ordinal))
+{
+    System.Windows.Forms.Application.EnableVisualStyles();
+    System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
+    System.Windows.Forms.Application.Run(new SponsorForm(System.Drawing.SystemIcons.Application));
+    return;
+}
+
 var runner = new RunnerSpec(
     "npx.cmd",
     new[] { "--yes", "@deepseek-ai/dsh" },
@@ -52,7 +60,93 @@ await VerifyStartRequestsAreCoalescedAsync();
 await VerifyWebHealthChecksAsync();
 VerifyIconResource();
 VerifyStartupSplash();
+VerifySponsorWindow();
+VerifyUpdateParsing();
+VerifyUpdatePreferences();
 Console.WriteLine("DshLauncher tests passed.");
+
+static void VerifyUpdateParsing()
+{
+    var available = UpdateChecker.ParseLatestRelease(
+        "{\"tag_name\":\"v0.3.8\"}",
+        new Version(0, 3, 7, 0));
+    if (!available.IsUpdateAvailable || available.LatestVersion != new Version(0, 3, 8) ||
+        available.ReleaseUri.AbsoluteUri != "https://github.com/Wanbinyu/dsh-launcher/releases/tag/v0.3.8")
+    {
+        throw new InvalidOperationException("A newer launcher release was not detected correctly.");
+    }
+
+    var current = UpdateChecker.ParseLatestRelease(
+        "{\"tag_name\":\"0.3.7\"}",
+        new Version(0, 3, 7, 0));
+    if (current.IsUpdateAvailable)
+    {
+        throw new InvalidOperationException("The current launcher release was reported as newer.");
+    }
+
+    try
+    {
+        UpdateChecker.ParseLatestRelease("{\"tag_name\":\"not-a-version\"}", new Version(0, 3, 7));
+        throw new InvalidOperationException("An invalid launcher release tag was accepted.");
+    }
+    catch (InvalidDataException)
+    {
+    }
+}
+
+static void VerifyUpdatePreferences()
+{
+    var directory = Path.Combine(Path.GetTempPath(), $"dsh-launcher-preferences-{Guid.NewGuid():N}");
+    var path = Path.Combine(directory, "preferences.json");
+    try
+    {
+        var store = new UpdatePreferencesStore(path);
+        if (!store.Load().AutoCheckUpdates)
+        {
+            throw new InvalidOperationException("Automatic update checks should default to enabled.");
+        }
+
+        var checkedAt = DateTimeOffset.UtcNow.AddMinutes(-3);
+        store.Save(new UpdatePreferences(AutoCheckUpdates: false, LastUpdateCheckUtc: checkedAt));
+        var saved = store.Load();
+        if (saved.AutoCheckUpdates || saved.LastUpdateCheckUtc != checkedAt)
+        {
+            throw new InvalidOperationException("Update preferences did not round-trip.");
+        }
+
+        File.WriteAllText(path, "invalid json");
+        if (!store.Load().AutoCheckUpdates)
+        {
+            throw new InvalidOperationException("Invalid update preferences did not use safe defaults.");
+        }
+    }
+    finally
+    {
+        if (Directory.Exists(directory))
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+}
+
+static void VerifySponsorWindow()
+{
+    using var form = new SponsorForm(System.Drawing.SystemIcons.Application);
+    if (form.MaximizeBox || form.MinimizeBox || form.TopMost)
+    {
+        throw new InvalidOperationException("The support window has unexpected window behavior.");
+    }
+
+    var controls = Descendants(form).ToArray();
+    var tabs = controls.OfType<System.Windows.Forms.TabControl>().SingleOrDefault();
+    var codes = controls.OfType<System.Windows.Forms.PictureBox>().ToArray();
+    if (tabs?.TabPages.Count != 2 || codes.Length != 2 || codes.Any(code => code.Image is null) ||
+        !controls.OfType<System.Windows.Forms.Label>().Any(label =>
+            label.Text.Contains("完全自愿，不影响任何功能", StringComparison.Ordinal)))
+    {
+        throw new InvalidOperationException("The support window is missing its voluntary support UI.");
+    }
+}
 
 static void VerifyStartupSplash()
 {

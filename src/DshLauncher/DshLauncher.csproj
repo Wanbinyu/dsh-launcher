@@ -7,10 +7,10 @@
     <Nullable>enable</Nullable>
     <RootNamespace>DshLauncher</RootNamespace>
     <AssemblyName>dsh-launcher</AssemblyName>
-    <Version>0.3.6</Version>
-    <AssemblyVersion>0.3.6.0</AssemblyVersion>
-    <FileVersion>0.3.6.0</FileVersion>
-    <InformationalVersion>0.3.6</InformationalVersion>
+    <Version>0.3.7</Version>
+    <AssemblyVersion>0.3.7.0</AssemblyVersion>
+    <FileVersion>0.3.7.0</FileVersion>
+    <InformationalVersion>0.3.7</InformationalVersion>
     <ApplicationIcon>..\..\assets\dsh-launcher.ico</ApplicationIcon>
     <Platforms>AnyCPU</Platforms>
   </PropertyGroup>
@@ -18,6 +18,12 @@
     <InternalsVisibleTo Include="DshLauncher.Tests" />
     <EmbeddedResource Include="..\..\assets\dsh-launcher.ico">
       <LogicalName>DshLauncher.Assets.dsh-launcher.ico</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\..\assets\sponsor-alipay.png">
+      <LogicalName>DshLauncher.Assets.sponsor-alipay.png</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\..\assets\sponsor-wechat.png">
+      <LogicalName>DshLauncher.Assets.sponsor-wechat.png</LogicalName>
     </EmbeddedResource>
   </ItemGroup>
 </Project>

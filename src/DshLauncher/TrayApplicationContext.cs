@@ -6,6 +6,8 @@ namespace DshLauncher;
 
 internal sealed class TrayApplicationContext : ApplicationContext
 {
+    private const string CheckUpdatesText = "检查更新 / Check for updates";
+    private const string AutoCheckUpdatesText = "自动检查更新 / Auto-check updates";
     private readonly LauncherConfig _config;
     private readonly LauncherLogger _logger;
     private readonly ProcessSupervisor _supervisor;
@@ -15,8 +17,16 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private readonly ContextMenuStrip _menu;
     private readonly SynchronizationContext _uiContext;
     private readonly CancellationTokenSource _controlCancellation = new();
+    private readonly UpdateChecker _updateChecker;
+    private readonly UpdatePreferencesStore _updatePreferencesStore;
     private StartupSplashForm? _startupSplash;
+    private SponsorForm? _sponsorForm;
+    private ToolStripMenuItem? _checkUpdatesMenuItem;
+    private ToolStripMenuItem? _autoCheckUpdatesMenuItem;
     private Task<StartResult>? _splashOperation;
+    private UpdatePreferences _updatePreferences;
+    private Uri? _availableUpdateUri;
+    private bool _checkingUpdates;
     private bool _exiting;
     private string _status = "starting";
 
@@ -30,6 +40,9 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _startCoordinator = new StartCoordinator(
             () => _supervisor.StartAsync(),
             OpenBrowser);
+        _updateChecker = new UpdateChecker();
+        _updatePreferencesStore = UpdatePreferencesStore.CreateDefault();
+        _updatePreferences = _updatePreferencesStore.Load();
 
         _menu = CreateMenu();
         _applicationIcon = LoadApplicationIcon();
@@ -41,10 +54,12 @@ internal sealed class TrayApplicationContext : ApplicationContext
             ContextMenuStrip = _menu
         };
         _notifyIcon.DoubleClick += HandleOpenClick;
+        _notifyIcon.BalloonTipClicked += HandleUpdateNotificationClick;
 
         _logger.Info($"Tray instance started. Web URL: {_config.WebUrl}.");
         _ = RunControlServerAsync();
         _ = StartAndOpenAsync(openBrowserOnStart, showErrors: true);
+        _ = RunAutomaticUpdateCheckAsync();
     }
 
     private ContextMenuStrip CreateMenu()
@@ -58,6 +73,19 @@ internal sealed class TrayApplicationContext : ApplicationContext
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(CreateMenuItem("打开日志目录 / Open logs", HandleLogsClick));
         menu.Items.Add(CreateMenuItem("复制诊断报告 / Copy diagnostics", async (_, _) => await CopyDiagnosticsAsync()));
+        menu.Items.Add(new ToolStripSeparator());
+        _checkUpdatesMenuItem = CreateMenuItem(CheckUpdatesText, HandleCheckUpdatesClick);
+        menu.Items.Add(_checkUpdatesMenuItem);
+        _autoCheckUpdatesMenuItem = new ToolStripMenuItem(AutoCheckUpdatesText)
+        {
+            Checked = _updatePreferences.AutoCheckUpdates,
+            CheckOnClick = true,
+        };
+        _autoCheckUpdatesMenuItem.CheckedChanged += HandleAutoCheckUpdatesChanged;
+        menu.Items.Add(_autoCheckUpdatesMenuItem);
+        menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add(CreateMenuItem("赞赏作者 / Support", HandleSponsorClick));
+        menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(CreateMenuItem("退出 / Exit", (_, _) => ExitApplication()));
         return menu;
     }
@@ -90,6 +118,199 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private void HandleStatusClick(object? sender, EventArgs args)
     {
         ShowStatus(BuildStatusMessage());
+    }
+
+    private void HandleSponsorClick(object? sender, EventArgs args)
+    {
+        if (_sponsorForm is null || _sponsorForm.IsDisposed)
+        {
+            _sponsorForm = new SponsorForm(_applicationIcon);
+            _sponsorForm.FormClosed += HandleSponsorClosed;
+            _sponsorForm.Show();
+            return;
+        }
+
+        if (_sponsorForm.WindowState == FormWindowState.Minimized)
+        {
+            _sponsorForm.WindowState = FormWindowState.Normal;
+        }
+        _sponsorForm.Activate();
+    }
+
+    private void HandleSponsorClosed(object? sender, FormClosedEventArgs args)
+    {
+        _sponsorForm = null;
+    }
+
+    private async void HandleCheckUpdatesClick(object? sender, EventArgs args)
+    {
+        await CheckForUpdatesAsync(manual: true);
+    }
+
+    private void HandleAutoCheckUpdatesChanged(object? sender, EventArgs args)
+    {
+        if (_autoCheckUpdatesMenuItem is null)
+        {
+            return;
+        }
+
+        _updatePreferences = _updatePreferences with
+        {
+            AutoCheckUpdates = _autoCheckUpdatesMenuItem.Checked,
+        };
+        SaveUpdatePreferences();
+        if (_updatePreferences.AutoCheckUpdates)
+        {
+            _ = CheckForUpdatesAsync(manual: false);
+        }
+    }
+
+    private async Task RunAutomaticUpdateCheckAsync()
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(10), _controlCancellation.Token);
+            var now = DateTimeOffset.UtcNow;
+            if (!_updatePreferences.AutoCheckUpdates ||
+                _updatePreferences.LastUpdateCheckUtc is { } checkedAt &&
+                checkedAt <= now && now - checkedAt < TimeSpan.FromHours(24))
+            {
+                return;
+            }
+
+            await CheckForUpdatesAsync(manual: false);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private async Task CheckForUpdatesAsync(bool manual)
+    {
+        if (_checkingUpdates)
+        {
+            if (manual)
+            {
+                ShowStatus("正在检查更新，请稍候。\n\nAn update check is already running.");
+            }
+            return;
+        }
+
+        _checkingUpdates = true;
+        if (_checkUpdatesMenuItem is not null)
+        {
+            _checkUpdatesMenuItem.Enabled = false;
+            _checkUpdatesMenuItem.Text = "正在检查更新... / Checking for updates...";
+        }
+
+        try
+        {
+            var result = await _updateChecker.CheckAsync(_controlCancellation.Token);
+            _updatePreferences = _updatePreferences with { LastUpdateCheckUtc = DateTimeOffset.UtcNow };
+            SaveUpdatePreferences();
+            if (!manual && !_updatePreferences.AutoCheckUpdates)
+            {
+                return;
+            }
+
+            if (!result.IsUpdateAvailable)
+            {
+                _availableUpdateUri = null;
+                if (manual)
+                {
+                    ShowStatus($"当前已是最新版：v{result.CurrentVersion}\n\nYou are up to date.");
+                }
+                return;
+            }
+
+            _availableUpdateUri = result.ReleaseUri;
+            if (_checkUpdatesMenuItem is not null)
+            {
+                _checkUpdatesMenuItem.Text = $"发现 {result.LatestTag} / Update available";
+            }
+
+            if (manual)
+            {
+                ShowUpdatePrompt(result);
+            }
+            else
+            {
+                _notifyIcon.BalloonTipTitle = "dsh-launcher 有新版本 / Update available";
+                _notifyIcon.BalloonTipText = $"{result.LatestTag} 已发布。点击查看下载页面。";
+                _notifyIcon.ShowBalloonTip(8000);
+            }
+        }
+        catch (OperationCanceledException) when (_exiting)
+        {
+        }
+        catch (Exception exception)
+        {
+            _logger.Error("Could not check for launcher updates", exception);
+            if (manual)
+            {
+                ShowError($"检查更新失败 / Could not check for updates:\n{exception.Message}");
+            }
+        }
+        finally
+        {
+            _checkingUpdates = false;
+            if (_checkUpdatesMenuItem is not null && !_exiting)
+            {
+                _checkUpdatesMenuItem.Enabled = true;
+                if (_availableUpdateUri is null)
+                {
+                    _checkUpdatesMenuItem.Text = CheckUpdatesText;
+                }
+            }
+        }
+    }
+
+    private void ShowUpdatePrompt(UpdateCheckResult result)
+    {
+        var answer = MessageBox.Show(
+            $"发现新版本 {result.LatestTag}，当前版本为 v{result.CurrentVersion}。\n\n" +
+            "是否打开 GitHub Release 下载页面？\n\n" +
+            "A new version is available. Open the download page?",
+            "dsh-launcher",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Information);
+        if (answer == DialogResult.Yes)
+        {
+            OpenUpdatePage(result.ReleaseUri);
+        }
+    }
+
+    private void HandleUpdateNotificationClick(object? sender, EventArgs args)
+    {
+        if (_availableUpdateUri is not null)
+        {
+            OpenUpdatePage(_availableUpdateUri);
+        }
+    }
+
+    private void OpenUpdatePage(Uri releaseUri)
+    {
+        try
+        {
+            BrowserLauncher.Open(releaseUri);
+        }
+        catch (Exception exception)
+        {
+            _logger.Error("Could not open the launcher update page", exception);
+            ShowError($"无法打开更新页面 / Could not open the update page:\n{exception.Message}");
+        }
+    }
+
+    private void SaveUpdatePreferences()
+    {
+        try
+        {
+            _updatePreferencesStore.Save(_updatePreferences);
+        }
+        catch (Exception exception)
+        {
+            _logger.Error("Could not save update preferences", exception);
+        }
     }
 
     private void HandleLogsClick(object? sender, EventArgs args)
@@ -445,6 +666,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _exiting = true;
         _controlCancellation.Cancel();
         CloseStartupSplash();
+        CloseSponsorForm();
         try
         {
             await _supervisor.StopAsync();
@@ -455,7 +677,9 @@ internal sealed class TrayApplicationContext : ApplicationContext
         }
 
         _supervisor.Dispose();
+        _updateChecker.Dispose();
         _notifyIcon.Visible = false;
+        _notifyIcon.BalloonTipClicked -= HandleUpdateNotificationClick;
         _notifyIcon.Dispose();
         _applicationIcon.Dispose();
         _menu.Dispose();
@@ -463,6 +687,20 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _logger.Info("Tray instance stopped.");
         _logger.Dispose();
         ExitThread();
+    }
+
+    private void CloseSponsorForm()
+    {
+        var form = _sponsorForm;
+        _sponsorForm = null;
+        if (form is null)
+        {
+            return;
+        }
+
+        form.FormClosed -= HandleSponsorClosed;
+        form.Close();
+        form.Dispose();
     }
 
     protected override void Dispose(bool disposing)
