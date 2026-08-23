@@ -1,4 +1,4 @@
-name: Windows CI
+name: CI
 
 on:
   push:
@@ -23,3 +23,27 @@ jobs:
       - name: Smoke test
         shell: powershell
         run: ./tests/smoke.ps1
+
+  android:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v5
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - name: Test, lint, and build
+        run: |
+          chmod +x ./gradlew
+          ./gradlew testDebugUnitTest lintDebug assembleDebug
+      - uses: actions/upload-artifact@v6
+        with:
+          name: dsh-launcher-android-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk

@@ -6,10 +6,19 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A Windows launcher for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). Run `dsh` or `deepseek` to start Harness in the background and open the browser when the local web server is ready. The tray process owns the child process, status, logs, and lifecycle controls.
+A Windows launcher for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). Run `dsh` or `deepseek` to start Harness in the background and open the browser when the local web server is ready. The tray process owns the child process, status, logs, and lifecycle controls. Windows remains the primary edition, and the repository also contains a separate [Android tablet client](android/README.en.md).
 
 > [!NOTE]
 > This is an independent community convenience tool. It does not modify the DeepSeek Harness source tree and is not an official DeepSeek tool. It is a Windows launcher, not a Cordis plugin, and it does not provide `dsh.bundle`.
+
+## Platform Editions
+
+| Platform | Version | Role |
+| --- | --- | --- |
+| Windows | `0.3.6` | Primary edition; starts and manages Harness locally. |
+| Android | `0.1.0` | LAN client; connects to a Windows host and does not run Harness on the tablet. |
+
+The Android edition requires Android 10 or newer and must be used only on a trusted private network. Harness LAN mode currently has no authentication. See the [Android setup and security guide](android/README.en.md).
 
 ## Features
 

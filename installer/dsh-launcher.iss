@@ -35,6 +35,8 @@ Source: "..\install.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\install.cmd"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\README.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\README.en.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\android\README.md"; DestDir: "{app}\android"; Flags: ignoreversion
+Source: "..\android\README.en.md"; DestDir: "{app}\android"; Flags: ignoreversion
 Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 
 [InstallDelete]

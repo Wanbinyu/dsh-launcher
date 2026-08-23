@@ -1,0 +1,61 @@
+plugins {
+    id "com.android.application"
+}
+
+android {
+    namespace "io.github.wanbinyu.dshlauncher"
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "io.github.wanbinyu.dshlauncher"
+        minSdk 29
+        targetSdk 36
+        versionCode 1
+        versionName "0.1.0"
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    signingConfigs {
+        release {
+            def keyStorePath = System.getenv("DSH_ANDROID_KEYSTORE")
+            if (keyStorePath) {
+                storeFile file(keyStorePath)
+                storePassword System.getenv("DSH_ANDROID_STORE_PASSWORD")
+                keyAlias System.getenv("DSH_ANDROID_KEY_ALIAS") ?: "dsh-launcher"
+                keyPassword System.getenv("DSH_ANDROID_KEY_PASSWORD") ?: System.getenv("DSH_ANDROID_STORE_PASSWORD")
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+        }
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+            if (System.getenv("DSH_ANDROID_KEYSTORE")) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    testOptions {
+        unitTests.returnDefaultValues = true
+    }
+
+    lint {
+        // API 36 keeps local-network behavior stable during the API 37 permission transition.
+        disable += ["OldTargetApi", "GradleDependency"]
+    }
+}
+
+dependencies {
+    testImplementation "junit:junit:4.13.2"
+}

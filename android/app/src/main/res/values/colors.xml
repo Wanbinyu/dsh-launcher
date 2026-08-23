@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="surface">#F8FAFC</color>
+    <color name="input_surface">#FFFFFF</color>
+    <color name="input_border">#CBD5E1</color>
+    <color name="text_primary">#111827</color>
+    <color name="text_secondary">#4B5563</color>
+    <color name="text_muted">#7C8799</color>
+    <color name="accent">#087E8B</color>
+    <color name="on_accent">#FFFFFF</color>
+    <color name="toolbar">#172124</color>
+    <color name="toolbar_text">#F3F7F5</color>
+    <color name="toolbar_secondary">#7DE2D1</color>
+    <color name="notice_surface">#FFF4D6</color>
+    <color name="notice_text">#6B4E00</color>
+    <color name="error">#B42318</color>
+</resources>

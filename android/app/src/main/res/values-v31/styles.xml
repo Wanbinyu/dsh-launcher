@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.DshLauncher.Starting" parent="Theme.DshLauncher">
+        <item name="android:windowSplashScreenBackground">@color/surface</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher</item>
+    </style>
+</resources>

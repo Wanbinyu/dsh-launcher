@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">dsh-launcher</string>
+    <string name="android_edition">Android 平板版</string>
+    <string name="app_icon_description">dsh-launcher 图标</string>
+    <string name="harness_title">DeepSeek Harness</string>
+    <string name="trusted_network_notice">仅连接可信私有网络中的 Windows 主机。局域网模式目前没有登录保护。</string>
+    <string name="endpoint_label">Windows 主机地址</string>
+    <string name="endpoint_hint">http://192.168.1.100:3080</string>
+    <string name="connect">连接</string>
+    <string name="refresh">刷新</string>
+    <string name="open_in_browser">使用浏览器打开</string>
+    <string name="change_host">更换主机</string>
+    <string name="checking_connection">正在检查 Windows 主机…</string>
+    <string name="opening_harness">正在打开 DeepSeek Harness…</string>
+    <string name="invalid_address">请输入不含路径、查询参数或密码的私网 HTTP 或 HTTPS 主机地址。</string>
+    <string name="network_unavailable">当前没有可用的网络连接。</string>
+    <string name="cannot_reach_server">Windows 主机没有响应，请检查局域网模式、地址和防火墙。</string>
+    <string name="server_http_error">服务器返回 HTTP %1$d。</string>
+    <string name="ssl_error">无法验证 HTTPS 证书，连接已被阻止。</string>
+    <string name="unsafe_page">Android 安全浏览已阻止这个地址。</string>
+    <string name="no_browser">没有可用的浏览器。</string>
+    <string name="no_file_picker">没有可用的文件选择器。</string>
+    <string name="download_description">DeepSeek Harness 文件</string>
+    <string name="download_started">已开始下载</string>
+</resources>

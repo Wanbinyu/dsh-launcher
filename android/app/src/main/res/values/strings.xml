@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">dsh-launcher</string>
+    <string name="android_edition">Android companion</string>
+    <string name="app_icon_description">dsh-launcher icon</string>
+    <string name="harness_title">DeepSeek Harness</string>
+    <string name="trusted_network_notice">Use only with a Windows host on a trusted private network. LAN mode currently has no login protection.</string>
+    <string name="endpoint_label">Windows host address</string>
+    <string name="endpoint_hint">http://192.168.1.100:3080</string>
+    <string name="connect">Connect</string>
+    <string name="refresh">Refresh</string>
+    <string name="open_in_browser">Open in browser</string>
+    <string name="change_host">Change host</string>
+    <string name="checking_connection">Checking the Windows host…</string>
+    <string name="opening_harness">Opening DeepSeek Harness…</string>
+    <string name="invalid_address">Enter a private HTTP or HTTPS host address without a path, query, or password.</string>
+    <string name="network_unavailable">No active network connection.</string>
+    <string name="cannot_reach_server">The Windows host did not respond. Check its LAN mode, address, and firewall.</string>
+    <string name="server_http_error">The server returned HTTP %1$d.</string>
+    <string name="ssl_error">The HTTPS certificate could not be verified. The connection was blocked.</string>
+    <string name="unsafe_page">Android Safe Browsing blocked this address.</string>
+    <string name="no_browser">No browser is available.</string>
+    <string name="no_file_picker">No file picker is available.</string>
+    <string name="download_description">DeepSeek Harness file</string>
+    <string name="download_started">Download started</string>
+</resources>

@@ -5,3 +5,10 @@ Thumbs.db
 artifacts/
 dist/
 .vs/
+**/.gradle/
+**/build/
+local.properties
+*.jks
+*.keystore
+*.p12
+*.dpapi
