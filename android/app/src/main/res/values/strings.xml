@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">dsh-launcher</string>
-    <string name="android_edition">Android companion</string>
+    <string name="app_name">dsh-launcher (PC required)</string>
+    <string name="android_edition">Android client for a PC host</string>
     <string name="app_icon_description">dsh-launcher icon</string>
     <string name="harness_title">DeepSeek Harness</string>
-    <string name="trusted_network_notice">Use only with a Windows host on a trusted private network. LAN mode currently has no login protection.</string>
+    <string name="host_requirement_title">Before you continue: a PC is required</string>
+    <string name="host_requirement_message">DeepSeek Harness does not currently provide an official way to install or run Harness locally on Android.\n\nThis independently developed, unofficial LAN client only connects to and controls a Windows PC that is already running DeepSeek Harness. It cannot run Harness independently on a phone or tablet.\n\nThe Android device and PC must be on the same trusted private network. LAN mode currently has no login protection.</string>
+    <string name="host_requirement_confirm">I understand, continue</string>
+    <string name="exit">Exit</string>
+    <string name="trusted_network_notice">A Windows PC already running DeepSeek Harness is required. This app cannot run Harness independently on Android. Use only on a trusted private network; LAN mode currently has no login protection.</string>
     <string name="endpoint_label">Windows host address</string>
     <string name="endpoint_hint">http://192.168.1.100:3080</string>
     <string name="connect">Connect</string>

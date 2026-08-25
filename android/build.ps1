@@ -41,7 +41,7 @@ try {
         $env:DSH_ANDROID_KEY_PASSWORD = $password
     }
 
-    & $gradle "testDebugUnitTest" "lint$variant" "assemble$variant"
+    & $gradle --project-dir $androidRoot "testDebugUnitTest" "lint$variant" "assemble$variant"
     if ($LASTEXITCODE -ne 0) {
         throw "Android build failed with exit code $LASTEXITCODE."
     }
@@ -54,8 +54,14 @@ try {
 
     $dist = Join-Path $repositoryRoot 'dist'
     New-Item -ItemType Directory -Force -Path $dist | Out-Null
+    $appGradle = Get-Content -LiteralPath (Join-Path $androidRoot 'app\build.gradle') -Raw
+    $versionMatch = [regex]::Match($appGradle, 'versionName\s+"([^"]+)"')
+    if (-not $versionMatch.Success) {
+        throw 'Android versionName was not found in app/build.gradle.'
+    }
+    $versionName = $versionMatch.Groups[1].Value
     $suffix = if ($DebugBuild) { '-debug' } else { '' }
-    $fileName = "dsh-launcher-android-v0.1.0$suffix.apk"
+    $fileName = "dsh-launcher-android-v$versionName-requires-windows-pc$suffix.apk"
     $target = Join-Path $dist $fileName
     Copy-Item -LiteralPath $source -Destination $target -Force
     $hash = (Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash.ToLowerInvariant()

@@ -2,6 +2,11 @@
 
 [简体中文](README.md) | [English](README.en.md)
 
+> [!IMPORTANT]
+> **Before downloading or installing: a PC is required, and the Android APK cannot run DeepSeek Harness independently.** DeepSeek Harness does not currently provide an official way to install or run Harness locally on Android. This app is an independently developed, unofficial LAN client that only connects to and controls a Windows PC already running Harness. It is not an official DeepSeek Android edition and cannot install Harness on a phone or tablet.
+
+Download only from the [Android v0.1.1 Release page](https://github.com/Wanbinyu/dsh-launcher/releases/tag/android-v0.1.1), which shows the full warning. The APK filename includes `requires-windows-pc`, and the application name shown by the Android installer also says “PC required.”
+
 An Android tablet client for DeepSeek Harness over a local network. The Windows edition remains the primary launcher and runs Harness. The Android app stores the host address, checks readiness, and presents the complete Web UI in a restricted WebView.
 
 > [!WARNING]
@@ -31,7 +36,7 @@ The command prints a LAN URL such as `http://192.168.1.25:3080`. On the first ru
 
 ## Android usage
 
-Install the APK, enter the printed LAN URL, and select Connect. The app remembers the last successful address. The toolbar supports refresh, opening the system browser, and changing the host. File selection and downloads use Android system services.
+After installing the APK, the first launch requires confirmation of the PC-host requirement and LAN safety notice before an address can be entered. Enter the printed LAN URL and select Connect. The app remembers the last successful address. The toolbar supports refresh, opening the system browser, and changing the host. File selection and downloads use Android system services.
 
 Close the Windows terminal or press `Ctrl+C` to stop LAN access.
 

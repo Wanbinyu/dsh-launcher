@@ -2,6 +2,7 @@ package io.github.wanbinyu.dshlauncher;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.DownloadManager;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
@@ -48,6 +49,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class MainActivity extends Activity {
     private static final String PREFERENCES = "dsh-launcher";
     private static final String ENDPOINT_KEY = "endpoint";
+    private static final String HOST_NOTICE_VERSION_KEY = "host-notice-version";
+    private static final int HOST_NOTICE_VERSION = 1;
+    private static final String CLIENT_USER_AGENT = "dsh-launcher-android/0.1.1";
     private static final int FILE_CHOOSER_REQUEST = 4107;
 
     private final ExecutorService networkExecutor = Executors.newSingleThreadExecutor();
@@ -75,6 +79,14 @@ public final class MainActivity extends Activity {
         configureActions();
         preferences = getSharedPreferences(PREFERENCES, MODE_PRIVATE);
 
+        if (preferences.getInt(HOST_NOTICE_VERSION_KEY, 0) < HOST_NOTICE_VERSION) {
+            showHostRequirementDialog(savedInstanceState);
+        } else {
+            continueStartup(savedInstanceState);
+        }
+    }
+
+    private void continueStartup(Bundle savedInstanceState) {
         String savedEndpoint = preferences.getString(ENDPOINT_KEY, "");
         endpointInput.setText(savedEndpoint);
         if (savedEndpoint == null || savedEndpoint.isBlank()) {
@@ -93,6 +105,23 @@ public final class MainActivity extends Activity {
         } else {
             tryConnect(savedEndpoint);
         }
+    }
+
+    private void showHostRequirementDialog(Bundle savedInstanceState) {
+        AlertDialog dialog = new AlertDialog.Builder(this)
+            .setTitle(R.string.host_requirement_title)
+            .setMessage(R.string.host_requirement_message)
+            .setPositiveButton(R.string.host_requirement_confirm, (ignored, which) -> {
+                preferences.edit()
+                    .putInt(HOST_NOTICE_VERSION_KEY, HOST_NOTICE_VERSION)
+                    .apply();
+                continueStartup(savedInstanceState);
+            })
+            .setNegativeButton(R.string.exit, (ignored, which) -> finish())
+            .create();
+        dialog.setCanceledOnTouchOutside(false);
+        dialog.setCancelable(false);
+        dialog.show();
     }
 
     private void bindViews() {
@@ -187,7 +216,7 @@ public final class MainActivity extends Activity {
             connection.setInstanceFollowRedirects(true);
             connection.setRequestMethod("GET");
             connection.setRequestProperty("Accept", "text/html,application/xhtml+xml");
-            connection.setRequestProperty("User-Agent", "dsh-launcher-android/0.1.0");
+            connection.setRequestProperty("User-Agent", CLIENT_USER_AGENT);
             int status = connection.getResponseCode();
             if (status >= 200 && status < 400) {
                 return new ProbeResult(true, "");
@@ -222,7 +251,7 @@ public final class MainActivity extends Activity {
         settings.setSupportMultipleWindows(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setMediaPlaybackRequiresUserGesture(true);
-        settings.setUserAgentString(settings.getUserAgentString() + " dsh-launcher-android/0.1.0");
+        settings.setUserAgentString(settings.getUserAgentString() + " " + CLIENT_USER_AGENT);
 
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, false);

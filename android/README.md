@@ -2,6 +2,11 @@
 
 [简体中文](README.md) | [English](README.en.md)
 
+> [!IMPORTANT]
+> **下载和安装前请确认：必须有一台电脑，Android APK 不能独立运行 DeepSeek Harness。** DeepSeek Harness 官方目前没有提供 Android 本机安装与运行方式。本应用是独立开发的非官方局域网客户端，只负责连接和控制一台已经运行 Harness 的 Windows 电脑；这不是 DeepSeek 官方 Android 版本，也不能在手机或平板上安装 Harness。
+
+请从带有完整提示的 [Android v0.1.1 Release 页面](https://github.com/Wanbinyu/dsh-launcher/releases/tag/android-v0.1.1) 下载。安装包文件名包含 `requires-windows-pc`，Android 安装页面显示的应用名称也会标注“需电脑”。
+
 Android 平板端的 DeepSeek Harness 局域网客户端。Windows 版本仍是主启动器：它负责运行 Harness，Android 应用保存主机地址、检查连接，并在受限 WebView 中提供完整 Web UI。
 
 > [!WARNING]
@@ -31,7 +36,7 @@ npx @deepseek-ai/dsh@latest web --host 0.0.0.0 --no-open
 
 ## Android 使用
 
-安装 APK，输入终端显示的局域网地址并点击“连接”。应用会记住最后一次成功连接的地址。顶部工具栏提供刷新、系统浏览器打开和更换主机；文件选择和下载使用 Android 系统能力。
+安装 APK 后，首次打开必须先确认电脑端要求和局域网安全提示，之后才能输入终端显示的局域网地址并点击“连接”。应用会记住最后一次成功连接的地址。顶部工具栏提供刷新、系统浏览器打开和更换主机；文件选择和下载使用 Android 系统能力。
 
 关闭 Windows 终端或按 `Ctrl+C` 会停止局域网服务。
 

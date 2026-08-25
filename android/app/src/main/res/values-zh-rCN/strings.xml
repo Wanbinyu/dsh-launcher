@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">dsh-launcher</string>
-    <string name="android_edition">Android 平板版</string>
+    <string name="app_name">dsh-launcher（需电脑）</string>
+    <string name="android_edition">Android 电脑端连接客户端</string>
     <string name="app_icon_description">dsh-launcher 图标</string>
     <string name="harness_title">DeepSeek Harness</string>
-    <string name="trusted_network_notice">仅连接可信私有网络中的 Windows 主机。局域网模式目前没有登录保护。</string>
+    <string name="host_requirement_title">使用前请确认：必须连接电脑</string>
+    <string name="host_requirement_message">DeepSeek Harness 官方目前不提供 Android 本机安装与运行方式。\n\n本应用是独立开发的非官方局域网客户端，只负责连接和控制一台已经运行 DeepSeek Harness 的 Windows 电脑，不能在手机或平板上独立运行 Harness。\n\n安卓设备和电脑必须连接同一个可信私有网络；局域网模式目前没有登录保护。</string>
+    <string name="host_requirement_confirm">我知道了，继续设置</string>
+    <string name="exit">退出</string>
+    <string name="trusted_network_notice">必须连接一台正在运行 DeepSeek Harness 的 Windows 电脑；本应用不能在安卓设备上独立运行 Harness。仅可使用可信私有网络，局域网模式目前没有登录保护。</string>
     <string name="endpoint_label">Windows 主机地址</string>
     <string name="endpoint_hint">http://192.168.1.100:3080</string>
     <string name="connect">连接</string>

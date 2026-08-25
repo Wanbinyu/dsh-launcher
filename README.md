@@ -2,12 +2,15 @@
 
 [简体中文](README.md) | [English](README.en.md)
 
+> [!IMPORTANT]
+> **Android 下载前必读：必须有电脑，APK 不能独立运行 DeepSeek Harness。** DeepSeek Harness 官方目前没有提供 Android 本机安装与运行方式，这是官方当前运行环境的限制，并非安装 APK 后就能绕过。本仓库的 Android 应用是独立开发的非官方局域网客户端，只负责连接和控制一台已经运行 Harness 的 Windows 电脑；安卓设备与电脑必须处于同一个可信私有网络。请先阅读带完整提示的 [Android v0.1.1 下载页](https://github.com/Wanbinyu/dsh-launcher/releases/tag/android-v0.1.1)，不要从第三方来源下载。
+
 <p align="center"><img src="assets/dsh-launcher.png" alt="dsh-launcher 图标" width="112"></p>
 
 [![CI](https://github.com/Wanbinyu/dsh-launcher/actions/workflows/ci.yml/badge.svg)](https://github.com/Wanbinyu/dsh-launcher/actions/workflows/ci.yml)
 [![许可证：MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-面向 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的 Windows 快捷启动器。输入 `dsh` 或 `deepseek`，后台启动 Harness，服务就绪后自动打开网页；进程、日志和状态由系统托盘管理。Windows 是主版本，仓库同时提供独立的 [Android 平板客户端](android/README.md)。
+面向 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的 Windows 快捷启动器。输入 `dsh` 或 `deepseek`，后台启动 Harness，服务就绪后自动打开网页；进程、日志和状态由系统托盘管理。Windows 是主版本，仓库同时提供配套的 [Android 平板客户端](android/README.md)。
 
 > [!NOTE]
 > 这是独立的社区便利工具，不修改 DeepSeek Harness 源码，也不是 DeepSeek 官方工具。它是 Windows 启动器，不是 Cordis 插件，不提供 `dsh.bundle`。
@@ -17,7 +20,7 @@
 | 平台 | 版本 | 定位 |
 | --- | --- | --- |
 | Windows | `0.3.7` | 主版本；在本机启动并管理 Harness。 |
-| Android | `0.1.0` | 局域网客户端；连接 Windows 主机，不在平板本机运行 Harness。 |
+| Android | `0.1.1` | 局域网客户端；连接 Windows 主机，不在平板本机运行 Harness。 |
 
 Android 版要求 Android 10 或更高版本，只能在可信私有网络中使用。Harness 的 LAN 模式目前没有身份认证，详见 [Android 安装与安全说明](android/README.md)。
 
