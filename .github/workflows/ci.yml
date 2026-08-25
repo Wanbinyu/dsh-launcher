@@ -23,6 +23,17 @@ jobs:
       - name: Smoke test
         shell: powershell
         run: ./tests/smoke.ps1
+      - name: Install Inno Setup
+        shell: powershell
+        run: |
+          choco install innosetup --yes --no-progress --limit-output
+          if ($LASTEXITCODE -ne 0) { throw "Chocolatey failed with exit code $LASTEXITCODE." }
+      - name: Build release packages
+        shell: powershell
+        run: ./installer/build.ps1
+      - name: Verify release packages
+        shell: powershell
+        run: ./tests/verify-release-assets.ps1
 
   android:
     runs-on: ubuntu-latest
@@ -39,10 +50,16 @@ jobs:
       - uses: android-actions/setup-android@v3
       - name: Install Android SDK
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
-      - name: Test, lint, and build
+      - name: Test, lint, and build debug plus release
         run: |
           chmod +x ./gradlew
-          ./gradlew testDebugUnitTest lintDebug assembleDebug
+          ./gradlew testDebugUnitTest lintDebug lintRelease assembleDebug assembleRelease
+      - name: Verify release APK
+        run: |
+          mapfile -t release_apks < <(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk')
+          test "${#release_apks[@]}" -eq 1
+          test "$(stat -c%s "${release_apks[0]}")" -gt 10000
+          echo "Verified ${release_apks[0]} ($(stat -c%s "${release_apks[0]}") bytes)"
       - uses: actions/upload-artifact@v6
         with:
           name: dsh-launcher-android-debug

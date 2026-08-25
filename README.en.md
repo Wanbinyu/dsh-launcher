@@ -4,6 +4,7 @@
 
 <p align="center"><img src="assets/dsh-launcher.png" alt="dsh-launcher icon" width="112"></p>
 
+[![CI](https://github.com/Wanbinyu/dsh-launcher/actions/workflows/ci.yml/badge.svg)](https://github.com/Wanbinyu/dsh-launcher/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A Windows launcher for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). Run `dsh` or `deepseek` to start Harness in the background and open the browser when the local web server is ready. The tray process owns the child process, status, logs, and lifecycle controls. Windows remains the primary edition, and the repository also contains a separate [Android tablet client](android/README.en.md).
@@ -192,9 +193,12 @@ powershell -ExecutionPolicy Bypass -File .\tests\smoke.ps1
 
 # Build the portable executable and SHA256 files
 powershell -ExecutionPolicy Bypass -File .\installer\build.ps1 -SkipInstaller
+
+# Verify the version, files, and SHA256 contents
+powershell -ExecutionPolicy Bypass -File .\tests\verify-release-assets.ps1 -SkipInstaller
 ```
 
-The icon script generates the README preview and a nine-size ICO from the project SVG sources. Tests cover default `web` injection, explicit argument pass-through, configurable CLI paths, coalesced startup requests, and the embedded icon resource. Doctor can be tested without a dialog through `dsh doctor --json`. The packaging script writes SHA256 files for the portable executable and installer under `dist`. Tray behavior must still be verified in a Windows desktop session.
+The icon script generates the README preview and a nine-size ICO from the project SVG sources. Tests cover default `web` injection, explicit argument pass-through, configurable CLI paths, coalesced startup requests, and the embedded icon resource. Doctor can be tested without a dialog through `dsh doctor --json`. GitHub Actions builds the Windows portable executable and installer, verifies their version and SHA256 files, and runs Android Debug/Release tests, lint, R8, and packaging. Tray behavior must still be verified in a Windows desktop session.
 
 ## Project Boundary
 

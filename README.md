@@ -4,6 +4,7 @@
 
 <p align="center"><img src="assets/dsh-launcher.png" alt="dsh-launcher 图标" width="112"></p>
 
+[![CI](https://github.com/Wanbinyu/dsh-launcher/actions/workflows/ci.yml/badge.svg)](https://github.com/Wanbinyu/dsh-launcher/actions/workflows/ci.yml)
 [![许可证：MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 面向 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的 Windows 快捷启动器。输入 `dsh` 或 `deepseek`，后台启动 Harness，服务就绪后自动打开网页；进程、日志和状态由系统托盘管理。Windows 是主版本，仓库同时提供独立的 [Android 平板客户端](android/README.md)。
@@ -192,9 +193,12 @@ powershell -ExecutionPolicy Bypass -File .\tests\smoke.ps1
 
 # 生成便携版和 SHA256 校验文件
 powershell -ExecutionPolicy Bypass -File .\installer\build.ps1 -SkipInstaller
+
+# 核对版本、文件和 SHA256 内容
+powershell -ExecutionPolicy Bypass -File .\tests\verify-release-assets.ps1 -SkipInstaller
 ```
 
-图标脚本从项目内 SVG 源文件生成 README 预览图和包含 9 种尺寸的 ICO。测试覆盖默认补 `web`、显式参数透传、可配置 CLI 路径、启动请求合并和图标资源嵌入。Doctor 可用 `dsh doctor --json` 做无弹窗验证。打包脚本会在 `dist` 中生成便携版和安装包的 SHA256 文件。托盘运行需要在 Windows 桌面会话中验证。
+图标脚本从项目内 SVG 源文件生成 README 预览图和包含 9 种尺寸的 ICO。测试覆盖默认补 `web`、显式参数透传、可配置 CLI 路径、启动请求合并和图标资源嵌入。Doctor 可用 `dsh doctor --json` 做无弹窗验证。GitHub Actions 会实际生成 Windows 便携版与安装器并核对版本和 SHA256，同时执行 Android Debug/Release 测试、lint、R8 和打包。托盘运行仍需在 Windows 桌面会话中验证。
 
 ## 项目边界
 
