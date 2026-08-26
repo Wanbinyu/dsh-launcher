@@ -19,7 +19,7 @@ A Windows launcher for [DeepSeek Harness](https://github.com/deepseek-ai/deepsee
 
 | Platform | Version | Role |
 | --- | --- | --- |
-| Windows | `0.3.7` | Primary edition; starts and manages Harness locally. |
+| Windows | `0.4.0` | Primary edition; installs, starts, and manages Harness locally. |
 | Android | `0.1.2` | Experimental LAN client; connects to Windows but cannot guarantee complete remote Web functionality. |
 
 The Android edition requires Android 10 or newer and must be tested only on a trusted private network. Harness LAN mode currently has no authentication and plain-HTTP remote access has known limitations. See the [Android setup and security guide](android/README.en.md).
@@ -28,7 +28,11 @@ The Android edition requires Android 10 or newer and must be tested only on a tr
 
 - Starts Harness in the background without holding the current terminal.
 - Shows startup progress immediately after a double-click, then closes it automatically once the web UI is ready and opened.
-- Tray menu for start, open web, status, restart, stop, logs, optional support, and exit.
+- Checks Node.js, npm, and Harness on first launch and shows a bilingual setup wizard when something is missing.
+- With explicit consent, installs Node.js LTS through Windows Package Manager and the official `@deepseek-ai/dsh` package from npm.
+- Uses a per-user managed Harness directory without overwriting a source checkout, global package, or existing Web profile; existing installations remain preferred.
+- Shows live setup stages, npm output, cancellation, and actionable failures that are also written to the local log.
+- Tray menu for start, open web, status, restart, stop, Harness install/update/repair/removal, logs, optional support, and exit.
 - Manual launcher update checks plus an auto-check toggle; auto-check is enabled by default, contacts GitHub at most once per day, and only notifies instead of silently downloading or installing.
 - An optional local support window; donations are entirely voluntary, unlock nothing, make no network calls, and are not tracked.
 - Provides both `dsh` and `deepseek` command entrypoints; a desktop shortcut can launch it directly.
@@ -44,7 +48,16 @@ The Android edition requires Android 10 or newer and must be tested only on a tr
 
 ## Install
 
-The recommended path is to download `dsh-launcher-setup.exe` from GitHub Releases and reopen your terminal after installation. The installer installs the self-contained EXEs, creates Start Menu and optional desktop shortcuts, adds the install directory to the current user's PATH, and registers an uninstall entry.
+The recommended path is to download `dsh-launcher-setup.exe` from GitHub Releases and reopen your terminal after installation. The installer installs the self-contained EXEs, creates Start Menu and optional desktop shortcuts, adds the install directory to the current user's PATH, registers an uninstall entry, and offers to launch the Harness setup check from the completion page.
+
+The launcher installer itself does not bundle Node.js or DeepSeek Harness. On the first double-click it reuses an existing Harness installation when possible; otherwise the setup wizard:
+
+1. Detects Node.js `22.19.0+`, npm, `winget`, and existing Harness installations; older Node.js releases are treated as requiring an upgrade.
+2. Installs Node.js LTS through `winget` after consent, or opens the Node.js site when `winget` is unavailable.
+3. Resolves an exact current `@deepseek-ai/dsh` version from the configured npm registry and installs it through a managed pnpm into `%LOCALAPPDATA%\dsh-launcher\managed-harness`; build scripts are limited to an explicit allowlist required by the current official Harness package.
+4. Validates the package name, version, and CLI entry before creating the Web profile, starting Harness, and opening the browser.
+
+This setup path does not require GitHub access after the launcher installer has been obtained, but npm registry access is required. The launcher never elevates silently; Windows may display a permission prompt for `winget` or the Node.js installer. The Run once option preserves the previous temporary `npx` path.
 
 Build the installer from a checkout:
 
@@ -110,6 +123,8 @@ Reports remove URL credentials, query strings, fragments, and common token, pass
 Double-click the `dsh-launcher` desktop or Start Menu shortcut to get the same behavior as `dsh`. Selecting Exit from the tray stops both Harness and the tray process.
 
 The progress window and tray icon appear immediately while Harness starts. The window closes automatically after the ready web UI opens, and a longer-start hint appears when a cold start takes several seconds. Double-clicking the tray during startup waits for the same operation; it does not create multiple progress windows, open an unavailable `127.0.0.1` page, or start another Harness process.
+
+The tray's Harness setup and repair submenu can reinstall, update, or repair the launcher-managed copy and can remove only that managed directory. Removal does not touch a global Harness installation, the `%USERPROFILE%\.dsh` Web profile, plugins, sessions, or workspaces. `DSH_LAUNCHER_MANAGED_ROOT` can override the managed path for testing or custom deployments.
 
 DeepSeek Harness `rc.8` and newer releases open the Web UI themselves. When the launcher supervises those versions in the background, it reads the installed package version and passes `--no-open`, then keeps ownership of readiness and opens one tab. `rc.7` keeps its original arguments.
 

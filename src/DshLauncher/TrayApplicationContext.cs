@@ -10,6 +10,8 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private const string AutoCheckUpdatesText = "自动检查更新 / Auto-check updates";
     private readonly LauncherConfig _config;
     private readonly LauncherLogger _logger;
+    private readonly RunnerResolver _runnerResolver;
+    private readonly ManagedHarnessInstaller _harnessInstaller;
     private readonly ProcessSupervisor _supervisor;
     private readonly StartCoordinator _startCoordinator;
     private readonly Icon _applicationIcon;
@@ -35,7 +37,9 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _config = config;
         _logger = logger;
         _uiContext = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
-        _supervisor = new ProcessSupervisor(config, logger);
+        _runnerResolver = new RunnerResolver(logger);
+        _harnessInstaller = new ManagedHarnessInstaller(_runnerResolver, logger);
+        _supervisor = new ProcessSupervisor(config, logger, ResolveRunnerForTrayAsync);
         _supervisor.ProcessExited += HandleProcessExited;
         _startCoordinator = new StartCoordinator(
             () => _supervisor.StartAsync(),
@@ -73,6 +77,18 @@ internal sealed class TrayApplicationContext : ApplicationContext
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(CreateMenuItem("打开日志目录 / Open logs", HandleLogsClick));
         menu.Items.Add(CreateMenuItem("复制诊断报告 / Copy diagnostics", async (_, _) => await CopyDiagnosticsAsync()));
+        var harnessMenu = new ToolStripMenuItem("Harness 安装与管理 / Setup & repair");
+        harnessMenu.DropDownItems.Add(CreateMenuItem(
+            "安装、更新或修复 / Install, update or repair",
+            HandleInstallOrRepairHarnessClick));
+        harnessMenu.DropDownItems.Add(CreateMenuItem(
+            "打开受管安装目录 / Open managed directory",
+            HandleOpenManagedHarnessDirectoryClick));
+        harnessMenu.DropDownItems.Add(new ToolStripSeparator());
+        harnessMenu.DropDownItems.Add(CreateMenuItem(
+            "卸载受管 Harness / Remove managed Harness",
+            HandleRemoveManagedHarnessClick));
+        menu.Items.Add(harnessMenu);
         menu.Items.Add(new ToolStripSeparator());
         _checkUpdatesMenuItem = CreateMenuItem(CheckUpdatesText, HandleCheckUpdatesClick);
         menu.Items.Add(_checkUpdatesMenuItem);
@@ -340,6 +356,170 @@ internal sealed class TrayApplicationContext : ApplicationContext
         {
             _logger.Error("Could not create diagnostics", exception);
             ShowError($"无法生成诊断报告 / Could not create diagnostics:\n{exception.Message}");
+        }
+    }
+
+    private async Task<RunnerSpec> ResolveRunnerForTrayAsync(CancellationToken cancellationToken)
+    {
+        var assessment = await _harnessInstaller.AssessAsync(cancellationToken);
+        if (assessment.ExistingRunner is not null && assessment.HasCompatibleNodeAndNpm)
+        {
+            return assessment.ExistingRunner;
+        }
+
+        using var prompt = new HarnessSetupPromptForm(assessment, _applicationIcon);
+        prompt.ShowDialog();
+        switch (prompt.Choice)
+        {
+            case HarnessSetupChoice.Install:
+                return await RunManagedHarnessInstallAsync(cancellationToken);
+            case HarnessSetupChoice.RunOnce:
+                return await _runnerResolver.ResolveNpxFallbackAsync(cancellationToken);
+            case HarnessSetupChoice.OpenNodeDownload:
+                BrowserLauncher.Open(new Uri("https://nodejs.org/en/download"));
+                throw new OperationCanceledException("Node.js installation is required.", cancellationToken);
+            default:
+                throw new OperationCanceledException("Harness setup was cancelled.", cancellationToken);
+        }
+    }
+
+    private async Task<RunnerSpec> RunManagedHarnessInstallAsync(CancellationToken cancellationToken)
+    {
+        using var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken,
+            _controlCancellation.Token);
+        using var progressForm = new HarnessInstallProgressForm(_applicationIcon);
+        progressForm.CancellationRequested += (_, _) => linkedCancellation.Cancel();
+        var progress = new Progress<HarnessInstallProgress>(progressForm.Report);
+        progressForm.Show();
+        progressForm.Activate();
+        try
+        {
+            var runner = await _harnessInstaller.InstallOrRepairAsync(progress, linkedCancellation.Token);
+            progressForm.MarkCompleted();
+            progressForm.Close();
+            return runner;
+        }
+        catch
+        {
+            progressForm.MarkCompleted();
+            progressForm.Close();
+            throw;
+        }
+    }
+
+    private async void HandleInstallOrRepairHarnessClick(object? sender, EventArgs args)
+    {
+        var managedVersion = _harnessInstaller.ReadManagedVersion();
+        var action = managedVersion is null ? "安装" : "更新或修复";
+        var answer = MessageBox.Show(
+            $"将从 npm {action}启动器受管的官方 @deepseek-ai/dsh 包。\n\n" +
+            $"位置：{ManagedHarnessPaths.GetRoot()}\n" +
+            (managedVersion is null ? string.Empty : $"当前受管版本：{managedVersion}\n") +
+            "不会覆盖全局安装或源码目录。是否继续？\n\n" +
+            "Install, update, or repair the launcher-managed official Harness package?",
+            "dsh-launcher",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Question);
+        if (answer != DialogResult.Yes)
+        {
+            return;
+        }
+
+        try
+        {
+            var status = _supervisor.GetStatus();
+            if (status.Running && status.RunnerDescription?.Contains(
+                    "launcher-managed", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                await _supervisor.StopAsync(_controlCancellation.Token);
+                SetStatus("stopped");
+            }
+
+            var runner = await RunManagedHarnessInstallAsync(_controlCancellation.Token);
+            ShowStatus($"DeepSeek Harness {runner.DshVersion ?? "unknown"} 已安装并验证。\n\n" +
+                       $"Installed at {ManagedHarnessPaths.GetRoot()}\n\n" +
+                       "点击“启动”即可运行；已有 Harness 环境仍保持优先。");
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception exception)
+        {
+            _logger.Error("Could not install or repair managed Harness", exception);
+            ShowError($"安装或修复 Harness 失败 / Setup failed:\n{exception.Message}\n\n" +
+                      $"日志 / Log: {_logger.FilePath}");
+        }
+    }
+
+    private async void HandleRemoveManagedHarnessClick(object? sender, EventArgs args)
+    {
+        var version = _harnessInstaller.ReadManagedVersion();
+        if (version is null && !_harnessInstaller.HasManagedInstallation())
+        {
+            ShowStatus("没有找到启动器受管的 Harness。\n\nNo launcher-managed Harness installation was found.");
+            return;
+        }
+
+        var answer = MessageBox.Show(
+            $"只会删除以下启动器受管目录：\n{ManagedHarnessPaths.GetRoot()}\n\n" +
+            "不会删除全局 Harness、Web profile、插件、会话或工作区。是否继续？\n\n" +
+            "Remove only the launcher-managed Harness package?",
+            "dsh-launcher",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Warning);
+        if (answer != DialogResult.Yes)
+        {
+            return;
+        }
+
+        try
+        {
+            var status = _supervisor.GetStatus();
+            if (status.Running && status.RunnerDescription?.Contains(
+                    "launcher-managed", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                await _supervisor.StopAsync(_controlCancellation.Token);
+                SetStatus("stopped");
+            }
+
+            using var progressForm = new HarnessInstallProgressForm(_applicationIcon);
+            using var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(_controlCancellation.Token);
+            progressForm.CancellationRequested += (_, _) => linkedCancellation.Cancel();
+            var progress = new Progress<HarnessInstallProgress>(progressForm.Report);
+            progressForm.Show();
+            await _harnessInstaller.RemoveAsync(progress, linkedCancellation.Token);
+            progressForm.MarkCompleted();
+            progressForm.Close();
+            ShowStatus("启动器受管的 Harness 已移除。\n\nLauncher-managed Harness was removed.");
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception exception)
+        {
+            _logger.Error("Could not remove managed Harness", exception);
+            ShowError($"无法移除受管 Harness / Could not remove managed Harness:\n{exception.Message}");
+        }
+    }
+
+    private void HandleOpenManagedHarnessDirectoryClick(object? sender, EventArgs args)
+    {
+        var root = ManagedHarnessPaths.GetRoot();
+        if (!_harnessInstaller.HasManagedInstallation())
+        {
+            ShowStatus("还没有启动器受管的 Harness 安装。\n\nNo launcher-managed Harness installation exists yet.");
+            return;
+        }
+
+        try
+        {
+            BrowserLauncher.OpenDirectory(root);
+        }
+        catch (Exception exception)
+        {
+            _logger.Error("Could not open managed Harness directory", exception);
+            ShowError($"无法打开受管目录 / Could not open managed directory:\n{exception.Message}");
         }
     }
 

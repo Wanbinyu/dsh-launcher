@@ -72,7 +72,7 @@ internal sealed record DoctorReport(
 
 internal sealed class DoctorRunner
 {
-    private static readonly Version MinimumNodeVersion = new(22, 19, 0);
+    private static readonly Version MinimumNodeVersion = ManagedHarnessInstaller.MinimumNodeVersion;
     private static readonly string[] CoreRuntimePackages =
     {
         "cordis",
@@ -103,6 +103,7 @@ internal sealed class DoctorRunner
         await CheckCliAsync(cancellationToken).ConfigureAwait(false);
         await CheckNodeAsync(cancellationToken).ConfigureAwait(false);
         CheckPackageManagers();
+        CheckManagedHarness();
         CheckProfile(dshHome);
         CheckBundlesAndRuntimeCopies(dshHome);
         await CheckWebEndpointAsync(cancellationToken).ConfigureAwait(false);
@@ -132,7 +133,7 @@ internal sealed class DoctorRunner
 
     private async Task CheckNodeAsync(CancellationToken cancellationToken)
     {
-        var node = RunnerResolver.FindExecutable("node");
+        var node = RunnerResolver.FindNodeExecutable();
         if (node is null)
         {
             Add("node", DoctorStatus.Failure, "node was not found on PATH; DSH requires Node.js >= 22.19.0");
@@ -164,13 +165,32 @@ internal sealed class DoctorRunner
 
     private void CheckPackageManagers()
     {
-        var available = new[] { "npm", "npx", "pnpm" }
-            .Select(name => (Name: name, Path: RunnerResolver.FindExecutable(name)))
-            .Where(item => item.Path is not null)
-            .Select(item => item.Name)
-            .ToArray();
-        Add("package-managers", available.Length > 0 ? DoctorStatus.Pass : DoctorStatus.Failure,
-            available.Length > 0 ? $"available: {string.Join(", ", available)}" : "npm, npx, and pnpm were not found on PATH");
+        var environment = new ManagedHarnessInstaller(new RunnerResolver(_logger), _logger).DetectEnvironment();
+        var available = new List<string>();
+        if (environment.NpmPath is not null) available.Add("npm");
+        if (environment.NpxPath is not null) available.Add("npx");
+        if (RunnerResolver.FindExecutable("pnpm") is not null) available.Add("pnpm");
+        Add("package-managers", available.Count > 0 ? DoctorStatus.Pass : DoctorStatus.Failure,
+            available.Count > 0 ? $"available: {string.Join(", ", available)}" : "npm, npx, and pnpm were not found on PATH");
+    }
+
+    private void CheckManagedHarness()
+    {
+        var root = ManagedHarnessPaths.GetRoot();
+        if (!Directory.Exists(root))
+        {
+            Add("managed-harness", DoctorStatus.Pass, "not installed; an existing Harness or the first-run setup wizard can be used");
+            return;
+        }
+
+        var installer = new ManagedHarnessInstaller(new RunnerResolver(_logger), _logger);
+        var version = installer.ReadManagedVersion();
+        var entry = ManagedHarnessPaths.GetPackageEntry();
+        Add("managed-harness",
+            version is not null && File.Exists(entry) ? DoctorStatus.Pass : DoctorStatus.Failure,
+            version is not null && File.Exists(entry)
+                ? $"{ManagedHarnessInstaller.PackageName} {version} at {root}"
+                : $"managed directory exists but the package is incomplete: {root}");
     }
 
     private void CheckProfile(string dshHome)

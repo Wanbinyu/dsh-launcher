@@ -19,7 +19,7 @@
 
 | 平台 | 版本 | 定位 |
 | --- | --- | --- |
-| Windows | `0.3.7` | 主版本；在本机启动并管理 Harness。 |
+| Windows | `0.4.0` | 主版本；可安装、启动并管理 Harness。 |
 | Android | `0.1.2` | 实验性局域网客户端；连接 Windows 主机，不保证完整远程 Web 功能。 |
 
 Android 版要求 Android 10 或更高版本，只能在可信私有网络中测试。Harness 的 LAN 模式目前没有身份认证，且普通 HTTP 远程访问存在已知限制，详见 [Android 安装与安全说明](android/README.md)。
@@ -28,7 +28,11 @@ Android 版要求 Android 10 或更高版本，只能在可信私有网络中测
 
 - 无控制台后台启动，不占用当前终端。
 - 双击后立即显示启动进度窗；服务就绪并打开网页后自动关闭，冷启动期间不再没有反馈。
-- 系统托盘菜单：启动、打开网页、查看状态、重启、停止、打开日志、赞赏作者和退出。
+- 首次运行自动检查 Node.js、npm 和 Harness；缺失时提供中英文安装向导。
+- 可经用户确认，通过 Windows Package Manager 安装 Node.js LTS，再从 npm 安装官方 `@deepseek-ai/dsh` 包。
+- Harness 安装到当前用户独立目录，已有源码、全局包和 Web profile 始终优先，不会被覆盖。
+- 安装过程显示实时阶段、npm 输出和取消按钮；失败信息同时写入本地日志。
+- 系统托盘菜单：启动、打开网页、查看状态、重启、停止、Harness 安装/更新/修复/卸载、打开日志、赞赏作者和退出。
 - 托盘支持手动检查启动器更新，并可勾选自动检查；自动检查默认开启、每天最多访问一次 GitHub，发现新版后只提示，不静默下载安装。
 - 可选的本地赞赏窗口；完全自愿、不影响任何功能，不联网也不记录赞赏状态。
 - 提供 `dsh`、`deepseek` 两个命令入口，双击桌面快捷方式也可以启动。
@@ -44,7 +48,16 @@ Android 版要求 Android 10 或更高版本，只能在可信私有网络中测
 
 ## 安装
 
-推荐从 GitHub Releases 下载 `dsh-launcher-setup.exe`，运行安装器后重新打开终端。安装器会安装自包含的 EXE、创建开始菜单和可选桌面快捷方式、把安装目录加入当前用户 PATH，并注册卸载入口。
+推荐从 GitHub Releases 下载 `dsh-launcher-setup.exe`，运行安装器后重新打开终端。安装器会安装自包含的 EXE、创建开始菜单和可选桌面快捷方式、把安装目录加入当前用户 PATH、注册卸载入口，并在完成页提供“启动并检查 Harness”选项。
+
+启动器安装包本身不捆绑 Node.js 或 DeepSeek Harness。首次双击时会先复用已有 Harness；如果没有，会显示安装向导：
+
+1. 检测 Node.js `22.19.0+`、npm、`winget` 和现有 Harness；旧版 Node.js 会被视为需要升级。
+2. 缺少 Node.js 时，在用户确认后通过 `winget` 安装 Node.js LTS；没有 `winget` 时打开 Node.js 官网。
+3. 从当前 npm registry 查询固定的最新 `@deepseek-ai/dsh` 版本，并通过受管 pnpm 安装到 `%LOCALAPPDATA%\dsh-launcher\managed-harness`；构建脚本只允许当前官方 Harness 所需的明确依赖白名单。
+4. 校验包名、版本和 CLI 入口后，继续创建 Web profile、启动服务并打开网页。
+
+这条安装路径不需要访问 GitHub，但需要能够访问 npm registry。安装器不会静默提升权限，`winget` 或 Node.js 安装程序可能显示 Windows 权限确认。选择“仅本次运行”仍可保留原来的 `npx` 临时启动方式。
 
 从源码构建安装包：
 
@@ -110,6 +123,8 @@ dsh doctor --json --report .\dsh-doctor.json
 双击桌面或开始菜单中的 `dsh-launcher` 快捷方式，效果等同于 `dsh`。点击托盘图标的“退出”会同时停止 Harness 和托盘进程。
 
 启动期间进度窗和托盘图标会立即出现，服务就绪并打开网页后进度窗自动关闭；启动时间较长时会提示首次启动或更新可能需要多等几秒。此时再次双击托盘会等待同一个启动任务，不会弹出多个进度窗、提前打开不可访问的 `127.0.0.1` 页面或重复启动 Harness。
+
+托盘中的“Harness 安装与管理”可以重新安装、更新或修复启动器受管副本，也可以只删除受管目录。删除操作不会触碰全局 Harness、`%USERPROFILE%\.dsh` Web profile、插件、会话或工作区。受管目录可通过 `DSH_LAUNCHER_MANAGED_ROOT` 改写，适合测试或自定义部署。
 
 DeepSeek Harness `rc.8` 开始会自行打开 Web 页面。启动器读取本地包版本，并在后台托管 `rc.8+` 时传入 `--no-open`，继续由托盘统一等待服务就绪后只打开一次；`rc.7` 保持原有启动参数。
 

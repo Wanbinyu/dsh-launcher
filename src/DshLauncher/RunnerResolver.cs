@@ -13,6 +13,12 @@ internal sealed class RunnerResolver
 
     public async Task<RunnerSpec> ResolveAsync(CancellationToken cancellationToken = default)
     {
+        var installedRunner = await TryResolveInstalledAsync(cancellationToken).ConfigureAwait(false);
+        return installedRunner ?? await ResolveNpxFallbackAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<RunnerSpec?> TryResolveInstalledAsync(CancellationToken cancellationToken = default)
+    {
         var sourceRunner = GetRunnerFromSource();
         if (sourceRunner is not null)
         {
@@ -28,52 +34,52 @@ internal sealed class RunnerResolver
         var localEntry = FindLocalPackageEntry();
         if (localEntry is not null)
         {
-            var node = FindExecutable("node");
-            if (node is null)
+            var node = FindNodeExecutable();
+            if (node is not null)
             {
-                throw new InvalidOperationException("A local @deepseek-ai/dsh package was found, but node was not found on PATH.");
+                return new RunnerSpec(
+                    node,
+                    new[] { localEntry },
+                    Environment.CurrentDirectory,
+                    $"local @deepseek-ai/dsh package at {localEntry}",
+                    DshVersion: FindDshPackageVersion(localEntry));
             }
 
-            return new RunnerSpec(
-                node,
-                new[] { localEntry },
-                Environment.CurrentDirectory,
-                $"local @deepseek-ai/dsh package at {localEntry}",
-                DshVersion: FindDshPackageVersion(localEntry));
+            _logger.Info("A local @deepseek-ai/dsh package was found, but Node.js is not available.");
         }
 
         var installedEntry = FindInstalledPackageEntry();
         if (installedEntry is not null)
         {
-            var node = FindExecutable("node");
-            if (node is null)
+            var node = FindNodeExecutable();
+            if (node is not null)
             {
-                throw new InvalidOperationException("An installed @deepseek-ai/dsh package was found, but node was not found on PATH.");
+                return new RunnerSpec(
+                    node,
+                    new[] { installedEntry },
+                    Environment.CurrentDirectory,
+                    $"installed @deepseek-ai/dsh package at {installedEntry}",
+                    DshVersion: FindDshPackageVersion(installedEntry));
             }
 
-            return new RunnerSpec(
-                node,
-                new[] { installedEntry },
-                Environment.CurrentDirectory,
-                $"installed @deepseek-ai/dsh package at {installedEntry}",
-                DshVersion: FindDshPackageVersion(installedEntry));
+            _logger.Info("An installed @deepseek-ai/dsh package was found, but Node.js is not available.");
         }
 
         var globalEntry = await FindGlobalPackageEntryAsync(cancellationToken).ConfigureAwait(false);
         if (globalEntry is not null)
         {
-            var node = FindExecutable("node");
-            if (node is null)
+            var node = FindNodeExecutable();
+            if (node is not null)
             {
-                throw new InvalidOperationException("A global @deepseek-ai/dsh package was found, but node was not found on PATH.");
+                return new RunnerSpec(
+                    node,
+                    new[] { globalEntry },
+                    Environment.CurrentDirectory,
+                    $"global @deepseek-ai/dsh package at {globalEntry}",
+                    DshVersion: FindDshPackageVersion(globalEntry));
             }
 
-            return new RunnerSpec(
-                node,
-                new[] { globalEntry },
-                Environment.CurrentDirectory,
-                $"global @deepseek-ai/dsh package at {globalEntry}",
-                DshVersion: FindDshPackageVersion(globalEntry));
+            _logger.Info("A global @deepseek-ai/dsh package was found, but Node.js is not available.");
         }
 
         var existingCommand = FindExistingDshCommand();
@@ -86,10 +92,33 @@ internal sealed class RunnerResolver
                 $"existing dsh command at {existingCommand}");
         }
 
+        var managedEntry = ManagedHarnessPaths.GetPackageEntry();
+        if (File.Exists(managedEntry))
+        {
+            var node = FindNodeExecutable();
+            if (node is not null)
+            {
+                return new RunnerSpec(
+                    node,
+                    new[] { managedEntry },
+                    Environment.CurrentDirectory,
+                    $"launcher-managed @deepseek-ai/dsh package at {managedEntry}",
+                    DshVersion: FindDshPackageVersion(managedEntry));
+            }
+
+            _logger.Info("A launcher-managed @deepseek-ai/dsh package was found, but Node.js is not available.");
+        }
+
+        return null;
+    }
+
+    public async Task<RunnerSpec> ResolveNpxFallbackAsync(CancellationToken cancellationToken = default)
+    {
         var npx = FindExecutable("npx");
         if (npx is null)
         {
-            throw new InvalidOperationException("Could not find a DeepSeek Harness source tree, an installed dsh CLI, or npx.");
+            throw new InvalidOperationException(
+                "Could not find an installed DeepSeek Harness CLI or npx. Install Node.js LTS and try again.");
         }
 
         var publishedVersion = await FindPublishedPackageVersionAsync(cancellationToken).ConfigureAwait(false);
@@ -461,6 +490,22 @@ internal sealed class RunnerResolver
     internal static string? FindExecutable(string name)
     {
         return FindAllExecutables(name).FirstOrDefault();
+    }
+
+    internal static string? FindNodeExecutable()
+    {
+        var fromPath = FindExecutable("node");
+        if (fromPath is not null)
+        {
+            return fromPath;
+        }
+
+        var candidates = new[]
+        {
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "nodejs", "node.exe"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "nodejs", "node.exe"),
+        };
+        return candidates.FirstOrDefault(File.Exists) is { } node ? Path.GetFullPath(node) : null;
     }
 
     private static IEnumerable<string> FindAllExecutables(string name)

@@ -19,7 +19,7 @@ internal sealed class ProcessSupervisor : IDisposable
 {
     private readonly LauncherConfig _config;
     private readonly LauncherLogger _logger;
-    private readonly RunnerResolver _resolver;
+    private readonly Func<CancellationToken, Task<RunnerSpec>> _resolveRunner;
     private readonly SemaphoreSlim _operationLock = new(1, 1);
     private readonly object _sync = new();
     private Process? _process;
@@ -27,11 +27,14 @@ internal sealed class ProcessSupervisor : IDisposable
     private int? _lastExitCode;
     private bool _disposed;
 
-    public ProcessSupervisor(LauncherConfig config, LauncherLogger logger)
+    public ProcessSupervisor(
+        LauncherConfig config,
+        LauncherLogger logger,
+        Func<CancellationToken, Task<RunnerSpec>>? resolveRunner = null)
     {
         _config = config;
         _logger = logger;
-        _resolver = new RunnerResolver(logger);
+        _resolveRunner = resolveRunner ?? new RunnerResolver(logger).ResolveAsync;
     }
 
     public event EventHandler? ProcessExited;
@@ -65,7 +68,7 @@ internal sealed class ProcessSupervisor : IDisposable
             }
 
             _lastExitCode = null;
-            var runner = await _resolver.ResolveAsync(cancellationToken).ConfigureAwait(true);
+            var runner = await _resolveRunner(cancellationToken).ConfigureAwait(true);
             _logger.Info($"Starting {runner.Description}.");
 
             var webRunner = AddWebCommand(runner);

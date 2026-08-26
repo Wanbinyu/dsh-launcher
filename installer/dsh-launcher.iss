@@ -1,4 +1,4 @@
-#define MyAppVersion "0.3.7"
+#define MyAppVersion "0.4.0"
 
 [Setup]
 AppId={{B42DAA6B-4D4A-4F8E-AE8E-7E2C8C6C8D11}
@@ -49,6 +49,9 @@ Name: "{autodesktop}\dsh-launcher"; Filename: "{app}\dsh-launcher.exe"; WorkingD
 
 [UninstallRun]
 Filename: "{app}\dsh-launcher.exe"; Parameters: "exit"; Flags: runhidden waituntilterminated; RunOnceId: "StopDshLauncher"
+
+[Run]
+Filename: "{app}\dsh-launcher.exe"; Description: "启动 dsh-launcher 并检查 Harness / Launch and set up Harness"; Flags: nowait postinstall skipifsilent
 
 [Code]
 function NormalizePathEntry(const Value: string): string;

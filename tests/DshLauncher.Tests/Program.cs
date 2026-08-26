@@ -56,10 +56,14 @@ foreach (var version in new string?[] { null, "", "0.1.0-rc.7", "0.0.9", "invali
 
 await VerifyNpxFallbackAsync();
 await VerifyLocalPackageVersionAsync();
+await VerifyManagedHarnessResolutionAsync();
+await VerifyManagedRemovalPreservesUnknownFilesAsync();
 await VerifyStartRequestsAreCoalescedAsync();
 await VerifyWebHealthChecksAsync();
 VerifyIconResource();
 VerifyStartupSplash();
+VerifyHarnessSetupWindows();
+VerifyManagedInstallCommands();
 VerifySponsorWindow();
 VerifyUpdateParsing();
 VerifyUpdatePreferences();
@@ -68,17 +72,17 @@ Console.WriteLine("DshLauncher tests passed.");
 static void VerifyUpdateParsing()
 {
     var available = UpdateChecker.ParseLatestRelease(
-        "{\"tag_name\":\"v0.3.8\"}",
-        new Version(0, 3, 7, 0));
-    if (!available.IsUpdateAvailable || available.LatestVersion != new Version(0, 3, 8) ||
-        available.ReleaseUri.AbsoluteUri != "https://github.com/Wanbinyu/dsh-launcher/releases/tag/v0.3.8")
+        "{\"tag_name\":\"v0.4.1\"}",
+        new Version(0, 4, 0, 0));
+    if (!available.IsUpdateAvailable || available.LatestVersion != new Version(0, 4, 1) ||
+        available.ReleaseUri.AbsoluteUri != "https://github.com/Wanbinyu/dsh-launcher/releases/tag/v0.4.1")
     {
         throw new InvalidOperationException("A newer launcher release was not detected correctly.");
     }
 
     var current = UpdateChecker.ParseLatestRelease(
-        "{\"tag_name\":\"0.3.7\"}",
-        new Version(0, 3, 7, 0));
+        "{\"tag_name\":\"0.4.0\"}",
+        new Version(0, 4, 0, 0));
     if (current.IsUpdateAvailable)
     {
         throw new InvalidOperationException("The current launcher release was reported as newer.");
@@ -86,7 +90,7 @@ static void VerifyUpdateParsing()
 
     try
     {
-        UpdateChecker.ParseLatestRelease("{\"tag_name\":\"not-a-version\"}", new Version(0, 3, 7));
+        UpdateChecker.ParseLatestRelease("{\"tag_name\":\"not-a-version\"}", new Version(0, 4, 0));
         throw new InvalidOperationException("An invalid launcher release tag was accepted.");
     }
     catch (InvalidDataException)
@@ -163,6 +167,112 @@ static void VerifyStartupSplash()
             label.Text.Contains("DeepSeek Harness 正在启动", StringComparison.Ordinal)))
     {
         throw new InvalidOperationException("The startup progress window is missing its progress UI.");
+    }
+}
+
+static void VerifyHarnessSetupWindows()
+{
+    var assessment = new HarnessEnvironmentAssessment(
+        ExistingRunner: null,
+        NodePath: @"C:\Program Files\nodejs\node.exe",
+        NodeVersion: new Version(24, 0, 0),
+        NpmPath: @"C:\Program Files\nodejs\npm.cmd",
+        NpxPath: @"C:\Program Files\nodejs\npx.cmd",
+        WingetPath: @"C:\Windows\winget.exe");
+    using var prompt = new HarnessSetupPromptForm(assessment, System.Drawing.SystemIcons.Application);
+    var promptControls = Descendants(prompt).ToArray();
+    if (!prompt.TopMost || prompt.MaximizeBox || prompt.MinimizeBox ||
+        !promptControls.OfType<System.Windows.Forms.Label>().Any(label =>
+            label.Text.Contains("首次配置 DeepSeek Harness", StringComparison.Ordinal)) ||
+        !promptControls.OfType<System.Windows.Forms.Button>().Any(button =>
+            button.Text.Contains("安装 Harness 并启动", StringComparison.Ordinal)))
+    {
+        throw new InvalidOperationException("The Harness setup prompt is missing its first-run installation UI.");
+    }
+
+    using var progress = new HarnessInstallProgressForm(System.Drawing.SystemIcons.Application);
+    progress.Report(new HarnessInstallProgress("测试安装阶段", "测试安装详情"));
+    var progressControls = Descendants(progress).ToArray();
+    if (!progress.TopMost ||
+        progressControls.OfType<System.Windows.Forms.ProgressBar>().SingleOrDefault()?.Style !=
+            System.Windows.Forms.ProgressBarStyle.Marquee ||
+        !progressControls.OfType<System.Windows.Forms.Label>().Any(label =>
+            label.Text.Contains("测试安装阶段", StringComparison.Ordinal)))
+    {
+        throw new InvalidOperationException("The Harness installation progress window is incomplete.");
+    }
+
+    progress.MarkCompleted();
+}
+
+static void VerifyManagedInstallCommands()
+{
+    if (ManagedHarnessInstaller.ParseNodeVersion("v22.19.0") != new Version(22, 19, 0) ||
+        ManagedHarnessInstaller.ParseNodeVersion("invalid") is not null ||
+        !(new HarnessEnvironmentAssessment(
+            ExistingRunner: null,
+            NodePath: "node.exe",
+            NodeVersion: new Version(22, 18, 0),
+            NpmPath: "npm.cmd",
+            NpxPath: "npx.cmd",
+            WingetPath: "winget.exe")).HasNodeAndNpm ||
+        (new HarnessEnvironmentAssessment(
+            ExistingRunner: null,
+            NodePath: "node.exe",
+            NodeVersion: new Version(22, 18, 0),
+            NpmPath: "npm.cmd",
+            NpxPath: "npx.cmd",
+            WingetPath: "winget.exe")).HasCompatibleNodeAndNpm)
+    {
+        throw new InvalidOperationException("Node.js compatibility detection is incorrect.");
+    }
+
+    if (!ManagedHarnessInstaller.AllowedBuildDependencies.SequenceEqual(new[]
+        {
+            "@deepseek-ai/dsh-subprocess-local", "@google/genai", "koffi", "node-pty", "protobufjs",
+        }))
+    {
+        throw new InvalidOperationException("The managed Harness build-script allowlist changed unexpectedly.");
+    }
+    var workspaceConfig = ManagedHarnessInstaller.BuildPnpmWorkspaceConfig();
+    if (!workspaceConfig.StartsWith("allowBuilds:", StringComparison.Ordinal) ||
+        ManagedHarnessInstaller.AllowedBuildDependencies.Any(package =>
+            !workspaceConfig.Contains($"  '{package}': true", StringComparison.Ordinal)))
+    {
+        throw new InvalidOperationException("The pnpm workspace build-script allowlist is incomplete.");
+    }
+
+    var winget = ManagedHarnessInstaller.BuildWingetInstallArguments();
+    if (!winget.SequenceEqual(new[]
+        {
+            "install", "--id", "OpenJS.NodeJS.LTS", "--exact", "--source", "winget",
+            "--accept-package-agreements", "--accept-source-agreements", "--silent", "--disable-interactivity",
+        }))
+    {
+        throw new InvalidOperationException("The Node.js winget command is not deterministic and unattended.");
+    }
+
+    var installRoot = Path.Combine(Path.GetTempPath(), "dsh launcher managed test");
+    var npm = ManagedHarnessInstaller.BuildPnpmBootstrapArguments(Path.Combine(installRoot, ".tools"));
+    if (!npm.Contains("--save-exact") || !npm.Contains("--no-audit") || !npm.Contains("--no-fund") ||
+        !npm.Contains("pnpm@11.24.0") ||
+        !npm.Contains(Path.GetFullPath(Path.Combine(installRoot, ".tools"))))
+    {
+        throw new InvalidOperationException("The managed pnpm bootstrap command is incomplete.");
+    }
+
+    var pnpmEntry = Path.Combine(installRoot, ".tools", "node_modules", "pnpm", "bin", "pnpm.cjs");
+    var pnpm = ManagedHarnessInstaller.BuildPnpmInstallArguments(pnpmEntry, "0.1.1-rc.2");
+    if (!pnpm.Contains(Path.GetFullPath(pnpmEntry)) || !pnpm.Contains("--save-exact") ||
+        pnpm.Contains("--ignore-workspace") || !pnpm.Contains("--reporter=append-only") ||
+        !pnpm.Contains("@deepseek-ai/dsh@0.1.1-rc.2"))
+    {
+        throw new InvalidOperationException("The managed Harness pnpm command is incomplete.");
+    }
+    var rebuild = ManagedHarnessInstaller.BuildPnpmRebuildArguments(pnpmEntry);
+    if (!rebuild.SequenceEqual(new[] { Path.GetFullPath(pnpmEntry), "rebuild", "--reporter=append-only" }))
+    {
+        throw new InvalidOperationException("The managed Harness repair command is incomplete.");
     }
 }
 
@@ -387,5 +497,105 @@ static async Task VerifyLocalPackageVersionAsync()
         Environment.SetEnvironmentVariable("DEEPSEEK_DSH_BIN", previousBinary);
         Environment.SetEnvironmentVariable("DSH_HOME", previousDshHome);
         Directory.Delete(testDirectory, recursive: true);
+    }
+}
+
+static async Task VerifyManagedHarnessResolutionAsync()
+{
+    var testDirectory = Path.Combine(Path.GetTempPath(), $"dsh-launcher-managed-tests-{Guid.NewGuid():N}");
+    var managedRoot = Path.Combine(testDirectory, "managed harness");
+    var previousPath = Environment.GetEnvironmentVariable("PATH");
+    var previousHarnessDirectory = Environment.GetEnvironmentVariable("DEEPSEEK_HARNESS_DIR");
+    var previousBinary = Environment.GetEnvironmentVariable("DEEPSEEK_DSH_BIN");
+    var previousDshHome = Environment.GetEnvironmentVariable("DSH_HOME");
+    var previousManagedRoot = Environment.GetEnvironmentVariable("DSH_LAUNCHER_MANAGED_ROOT");
+    var previousCurrentDirectory = Environment.CurrentDirectory;
+    Directory.CreateDirectory(testDirectory);
+    try
+    {
+        var toolDirectory = Path.Combine(testDirectory, "tools");
+        var packageDirectory = Path.Combine(managedRoot, "node_modules", "@deepseek-ai", "dsh");
+        Directory.CreateDirectory(toolDirectory);
+        Directory.CreateDirectory(Path.Combine(packageDirectory, "lib"));
+        File.WriteAllText(Path.Combine(toolDirectory, "node.cmd"), "@exit /b 0");
+        File.WriteAllText(Path.Combine(packageDirectory, "lib", "bin.js"), string.Empty);
+        File.WriteAllText(Path.Combine(managedRoot, ".dsh-launcher-managed"), "dsh-launcher managed Harness v1");
+        File.WriteAllText(
+            Path.Combine(packageDirectory, "package.json"),
+            "{\"name\":\"@deepseek-ai/dsh\",\"version\":\"0.1.1-rc.2\"}");
+        Environment.SetEnvironmentVariable("PATH", toolDirectory);
+        Environment.SetEnvironmentVariable("DEEPSEEK_HARNESS_DIR", null);
+        Environment.SetEnvironmentVariable("DEEPSEEK_DSH_BIN", null);
+        Environment.SetEnvironmentVariable("DSH_HOME", Path.Combine(testDirectory, "dsh-home"));
+        Environment.SetEnvironmentVariable("DSH_LAUNCHER_MANAGED_ROOT", managedRoot);
+        Environment.CurrentDirectory = testDirectory;
+
+        using var logger = LauncherLogger.Create(Path.Combine(testDirectory, "logs"));
+        var resolver = new RunnerResolver(logger);
+        var installer = new ManagedHarnessInstaller(resolver, logger);
+        var assessment = await installer.AssessAsync();
+        if (assessment.ExistingRunner is null ||
+            assessment.ExistingRunner.DshVersion != "0.1.1-rc.2" ||
+            !assessment.ExistingRunner.Description.Contains("launcher-managed", StringComparison.OrdinalIgnoreCase) ||
+            installer.ReadManagedVersion() != "0.1.1-rc.2")
+        {
+            throw new InvalidOperationException("The launcher-managed Harness package was not resolved correctly.");
+        }
+
+        await installer.RemoveAsync(progress: null);
+        if (Directory.Exists(managedRoot))
+        {
+            throw new InvalidOperationException("The launcher-managed Harness directory was not removed.");
+        }
+    }
+    finally
+    {
+        Environment.CurrentDirectory = previousCurrentDirectory;
+        Environment.SetEnvironmentVariable("PATH", previousPath);
+        Environment.SetEnvironmentVariable("DEEPSEEK_HARNESS_DIR", previousHarnessDirectory);
+        Environment.SetEnvironmentVariable("DEEPSEEK_DSH_BIN", previousBinary);
+        Environment.SetEnvironmentVariable("DSH_HOME", previousDshHome);
+        Environment.SetEnvironmentVariable("DSH_LAUNCHER_MANAGED_ROOT", previousManagedRoot);
+        if (Directory.Exists(testDirectory))
+        {
+            Directory.Delete(testDirectory, recursive: true);
+        }
+    }
+}
+
+static async Task VerifyManagedRemovalPreservesUnknownFilesAsync()
+{
+    var testDirectory = Path.Combine(Path.GetTempPath(), $"dsh-launcher-managed-remove-{Guid.NewGuid():N}");
+    var managedRoot = Path.Combine(testDirectory, "managed harness");
+    var previousManagedRoot = Environment.GetEnvironmentVariable("DSH_LAUNCHER_MANAGED_ROOT");
+    Directory.CreateDirectory(Path.Combine(managedRoot, "node_modules", "generated"));
+    Directory.CreateDirectory(Path.Combine(managedRoot, ".tools", "generated"));
+    try
+    {
+        File.WriteAllText(Path.Combine(managedRoot, ".dsh-launcher-managed"), "dsh-launcher managed Harness v1");
+        File.WriteAllText(Path.Combine(managedRoot, "package.json"), "{}");
+        File.WriteAllText(Path.Combine(managedRoot, "pnpm-lock.yaml"), "lockfileVersion: '9.0'");
+        File.WriteAllText(Path.Combine(managedRoot, "pnpm-workspace.yaml"), "allowBuilds: {}");
+        File.WriteAllText(Path.Combine(managedRoot, "keep.txt"), "user file");
+        Environment.SetEnvironmentVariable("DSH_LAUNCHER_MANAGED_ROOT", managedRoot);
+
+        using var logger = LauncherLogger.Create(Path.Combine(testDirectory, "logs"));
+        var installer = new ManagedHarnessInstaller(new RunnerResolver(logger), logger);
+        await installer.RemoveAsync(progress: null);
+        if (!Directory.Exists(managedRoot) || !File.Exists(Path.Combine(managedRoot, "keep.txt")) ||
+            Directory.Exists(Path.Combine(managedRoot, "node_modules")) ||
+            Directory.Exists(Path.Combine(managedRoot, ".tools")) ||
+            File.Exists(Path.Combine(managedRoot, ".dsh-launcher-managed")))
+        {
+            throw new InvalidOperationException("Managed removal did not preserve an unknown user file safely.");
+        }
+    }
+    finally
+    {
+        Environment.SetEnvironmentVariable("DSH_LAUNCHER_MANAGED_ROOT", previousManagedRoot);
+        if (Directory.Exists(testDirectory))
+        {
+            Directory.Delete(testDirectory, recursive: true);
+        }
     }
 }
