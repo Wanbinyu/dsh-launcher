@@ -15,6 +15,18 @@ A Windows launcher for [DeepSeek Harness](https://github.com/deepseek-ai/deepsee
 > [!NOTE]
 > This is an independent community convenience tool. It does not modify the DeepSeek Harness source tree and is not an official DeepSeek tool. It is a Windows launcher, not a Cordis plugin, and it does not provide `dsh.bundle`.
 
+## Online Project Hub
+
+Visit **[Wanbinyu DSH Toolbox](https://wanbinyu.github.io/wanbinyu-harness-toolbox/)** for a single-page overview of the Windows launcher, companion plugins, pinned downloads, and project verification details. Download buttons lead directly to the corresponding GitHub Releases. The site has no ads or telemetry and does not read local Harness data while you browse it.
+
+<p align="center">
+  <a href="https://wanbinyu.github.io/wanbinyu-harness-toolbox/">
+    <img src="assets/harness-toolbox-preview.png" alt="Wanbinyu DSH Toolbox interface preview" width="960">
+  </a>
+</p>
+
+<p align="center"><sub>Click the screenshot to open DSH Toolbox. Both the site and this launcher are independent community projects, not official DeepSeek products.</sub></p>
+
 ## Platform Editions
 
 | Platform | Version | Role |

@@ -15,6 +15,18 @@
 > [!NOTE]
 > 这是独立的社区便利工具，不修改 DeepSeek Harness 源码，也不是 DeepSeek 官方工具。它是 Windows 启动器，不是 Cordis 插件，不提供 `dsh.bundle`。
 
+## 在线项目界面
+
+访问 **[Wanbinyu DSH Toolbox](https://wanbinyu.github.io/wanbinyu-harness-toolbox/)**，可以在一个页面中查看 Windows 启动器、配套插件、固定版本下载和项目验证信息。下载按钮直接指向对应的 GitHub Release；页面无广告、无遥测，也不会在浏览时读取本机 Harness 数据。
+
+<p align="center">
+  <a href="https://wanbinyu.github.io/wanbinyu-harness-toolbox/">
+    <img src="assets/harness-toolbox-preview.png" alt="Wanbinyu DSH Toolbox 中文界面预览" width="960">
+  </a>
+</p>
+
+<p align="center"><sub>点击截图打开 DSH Toolbox。该页面及本启动器均为独立社区项目，并非 DeepSeek 官方产品。</sub></p>
+
 ## 平台版本
 
 | 平台 | 版本 | 定位 |
