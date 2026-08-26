@@ -3,14 +3,25 @@
 [简体中文](README.md) | [English](README.en.md)
 
 > [!IMPORTANT]
-> **下载和安装前请确认：必须有一台电脑，Android APK 不能独立运行 DeepSeek Harness。** DeepSeek Harness 官方目前没有提供 Android 本机安装与运行方式。本应用是独立开发的非官方局域网客户端，只负责连接和控制一台已经运行 Harness 的 Windows 电脑；这不是 DeepSeek 官方 Android 版本，也不能在手机或平板上安装 Harness。
+> **这是实验性客户端：必须有一台电脑，Android APK 不能独立运行 DeepSeek Harness，也不能保证完整远程 Web 功能。** DeepSeek Harness 官方目前没有提供 Android 本机安装与运行方式。本应用是独立开发的非官方局域网客户端，只能尝试连接一台已经运行 Harness 的 Windows 电脑；它不是 DeepSeek 官方 Android 版本，也不会绕过 Harness 的安全限制。
 
-请从带有完整提示的 [Android v0.1.1 Release 页面](https://github.com/Wanbinyu/dsh-launcher/releases/tag/android-v0.1.1) 下载。安装包文件名包含 `requires-windows-pc`，Android 安装页面显示的应用名称也会标注“需电脑”。
+请从带有完整提示的 [Android v0.1.2 Release 页面](https://github.com/Wanbinyu/dsh-launcher/releases/tag/android-v0.1.2) 下载。安装包文件名包含 `experimental-requires-windows-pc`，Android 安装页面显示的应用名称也会标注“实验性，需电脑”。
 
-Android 平板端的 DeepSeek Harness 局域网客户端。Windows 版本仍是主启动器：它负责运行 Harness，Android 应用保存主机地址、检查连接，并在受限 WebView 中提供完整 Web UI。
+Android 平板端的实验性 DeepSeek Harness 局域网客户端。Windows 版本仍是主启动器：它负责运行 Harness，Android 应用只保存主机地址、检查基础 HTTP 连接，并尝试在受限 WebView 中显示 Web UI。
 
 > [!WARNING]
 > DeepSeek Harness 的 `0.0.0.0` 模式目前没有身份认证，并且 Agent 可以访问工作区和执行命令。只应在你控制的可信私有网络中临时使用，不能暴露到公网、公共 Wi-Fi 或访客网络。
+
+## 当前已知限制
+
+截至 DeepSeek Harness `0.1.1-rc.2`：
+
+- 普通局域网 HTTP 地址不是浏览器安全上下文，`crypto.randomUUID` 可能不可用，导致首次 RPC 失败或持续重连。
+- 即使补足 UUID，Host/Origin 信任校验仍可能返回 403。
+- 设置和凭据相关 API 有意保持仅本机可用，远程浏览器可能显示“设置不可用”。
+- Android 应用的基础 HTTP 探测成功只代表服务器可达，不代表会话、设置、供应商或预设功能都能使用。
+
+详见官方社区报告 [#4209](https://github.com/deepseek-ai/deepseek-harness/discussions/4209) 和 [#3302](https://github.com/deepseek-ai/deepseek-harness/discussions/3302)。本应用不会注入脚本、伪装 Host/Origin 或绕过这些边界。当前较安全的完整远程方案仍是带身份认证的 HTTPS，或让浏览器保持 localhost 来源的受控 SSH/平台端口转发；本应用不负责配置这些方案。
 
 ## 要求
 
@@ -20,23 +31,23 @@ Android 平板端的 DeepSeek Harness 局域网客户端。Windows 版本仍是�
 
 ## 在 Windows 主机启动
 
-先退出正在运行的普通 dsh-launcher 托盘实例，然后在 Windows 终端运行：
+以下命令只用于可信私有网络中的兼容性测试。先退出正在运行的普通 dsh-launcher 托盘实例，将示例 IP 替换为电脑真实局域网 IP，然后在 Windows 终端运行：
 
 ```powershell
-dsh web --host 0.0.0.0
+dsh web --host 0.0.0.0 --trusted-host 192.168.1.25:3080 --no-open
 ```
 
-使用最新版 Harness 时可以禁止电脑自动打开浏览器：
+也可以直接使用官方 CLI：
 
 ```powershell
-npx @deepseek-ai/dsh@latest web --host 0.0.0.0 --no-open
+npx @deepseek-ai/dsh@latest web --host 0.0.0.0 --trusted-host 192.168.1.25:3080 --no-open
 ```
 
-终端会显示局域网地址，例如 `http://192.168.1.25:3080`。首次运行时，Windows 防火墙应只允许“专用网络”，不要允许公用网络。
+`--trusted-host` 只是 Host/Origin 防护的一部分，不是登录认证，也不能解除上述远程设置限制。首次运行时，Windows 防火墙应只允许“专用网络”，不要允许公用网络。
 
 ## Android 使用
 
-安装 APK 后，首次打开必须先确认电脑端要求和局域网安全提示，之后才能输入终端显示的局域网地址并点击“连接”。应用会记住最后一次成功连接的地址。顶部工具栏提供刷新、系统浏览器打开和更换主机；文件选择和下载使用 Android 系统能力。
+安装 APK 后，首次打开必须先确认电脑端要求、实验性状态和局域网安全提示，之后才能输入局域网地址并继续测试。Web 界面顶部会一直显示实验性连接提示。应用会记住最后一次成功连接的地址；顶部工具栏提供刷新、系统浏览器打开和更换主机。
 
 关闭 Windows 终端或按 `Ctrl+C` 会停止局域网服务。
 

@@ -204,6 +204,16 @@
             android:progressTint="@color/accent"
             android:visibility="gone" />
 
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/notice_background"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="10dp"
+            android:text="@string/experimental_web_notice"
+            android:textColor="@color/notice_text"
+            android:textSize="12sp" />
+
         <WebView
             android:id="@+id/web_view"
             android:layout_width="match_parent"

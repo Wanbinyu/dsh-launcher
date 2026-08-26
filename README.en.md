@@ -3,7 +3,7 @@
 [简体中文](README.md) | [English](README.en.md)
 
 > [!IMPORTANT]
-> **Read before downloading Android: a PC is required, and the APK cannot run DeepSeek Harness independently.** DeepSeek Harness does not currently provide an official way to install or run Harness locally on Android; installing this APK does not remove that official runtime limitation. The Android app in this repository is an independently developed, unofficial LAN client that only connects to and controls a Windows PC already running Harness. The Android device and PC must be on the same trusted private network. Read the full warning on the [Android v0.1.1 download page](https://github.com/Wanbinyu/dsh-launcher/releases/tag/android-v0.1.1) first; do not download it from third-party sources.
+> **The Android edition is experimental. A PC is required, and the APK cannot run DeepSeek Harness independently.** DeepSeek Harness does not currently provide an official way to run Harness locally on Android. On plain LAN HTTP origins, `0.1.1-rc.2` also has known UUID, Host/Origin trust, and remote-settings limitations, so a page opening does not guarantee complete functionality. This app does not bypass official security boundaries. Read the [Android v0.1.2 download page](https://github.com/Wanbinyu/dsh-launcher/releases/tag/android-v0.1.2) first; do not download it from third-party sources.
 
 <p align="center"><img src="assets/dsh-launcher.png" alt="dsh-launcher icon" width="112"></p>
 
@@ -20,9 +20,9 @@ A Windows launcher for [DeepSeek Harness](https://github.com/deepseek-ai/deepsee
 | Platform | Version | Role |
 | --- | --- | --- |
 | Windows | `0.3.7` | Primary edition; starts and manages Harness locally. |
-| Android | `0.1.1` | LAN client; connects to a Windows host and does not run Harness on the tablet. |
+| Android | `0.1.2` | Experimental LAN client; connects to Windows but cannot guarantee complete remote Web functionality. |
 
-The Android edition requires Android 10 or newer and must be used only on a trusted private network. Harness LAN mode currently has no authentication. See the [Android setup and security guide](android/README.en.md).
+The Android edition requires Android 10 or newer and must be tested only on a trusted private network. Harness LAN mode currently has no authentication and plain-HTTP remote access has known limitations. See the [Android setup and security guide](android/README.en.md).
 
 ## Features
 

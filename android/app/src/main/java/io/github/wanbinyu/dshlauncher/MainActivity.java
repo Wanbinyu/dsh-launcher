@@ -50,8 +50,8 @@ public final class MainActivity extends Activity {
     private static final String PREFERENCES = "dsh-launcher";
     private static final String ENDPOINT_KEY = "endpoint";
     private static final String HOST_NOTICE_VERSION_KEY = "host-notice-version";
-    private static final int HOST_NOTICE_VERSION = 1;
-    private static final String CLIENT_USER_AGENT = "dsh-launcher-android/0.1.1";
+    private static final int HOST_NOTICE_VERSION = 2;
+    private static final String CLIENT_USER_AGENT = "dsh-launcher-android/0.1.2";
     private static final int FILE_CHOOSER_REQUEST = 4107;
 
     private final ExecutorService networkExecutor = Executors.newSingleThreadExecutor();

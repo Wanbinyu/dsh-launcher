@@ -1,17 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">dsh-launcher（需电脑）</string>
-    <string name="android_edition">Android 电脑端连接客户端</string>
+    <string name="app_name">dsh-launcher（实验性，需电脑）</string>
+    <string name="android_edition">Android 实验性电脑端连接客户端</string>
     <string name="app_icon_description">dsh-launcher 图标</string>
     <string name="harness_title">DeepSeek Harness</string>
-    <string name="host_requirement_title">使用前请确认：必须连接电脑</string>
-    <string name="host_requirement_message">DeepSeek Harness 官方目前不提供 Android 本机安装与运行方式。\n\n本应用是独立开发的非官方局域网客户端，只负责连接和控制一台已经运行 DeepSeek Harness 的 Windows 电脑，不能在手机或平板上独立运行 Harness。\n\n安卓设备和电脑必须连接同一个可信私有网络；局域网模式目前没有登录保护。</string>
-    <string name="host_requirement_confirm">我知道了，继续设置</string>
+    <string name="host_requirement_title">重要限制：目前不是完整 Android 版</string>
+    <string name="host_requirement_message">DeepSeek Harness 官方目前不提供 Android 本机安装与运行方式。\n\n本应用是独立开发的非官方实验性局域网客户端，只能尝试连接一台已经运行 Harness 的 Windows 电脑。Harness 0.1.1-rc.2 在普通局域网 HTTP 地址下存在 UUID、Host/Origin 校验和远程设置限制：即使首页打开，设置、供应商、预设或会话功能仍可能失败。\n\n本应用不会绕过这些官方安全边界。仅在你控制的可信私有网络中测试，不能用于公网、公共 Wi-Fi 或访客网络。</string>
+    <string name="host_requirement_confirm">了解限制，继续测试</string>
     <string name="exit">退出</string>
-    <string name="trusted_network_notice">必须连接一台正在运行 DeepSeek Harness 的 Windows 电脑；本应用不能在安卓设备上独立运行 Harness。仅可使用可信私有网络，局域网模式目前没有登录保护。</string>
+    <string name="trusted_network_notice">实验性客户端：必须连接 Windows 电脑，不能在安卓设备上运行 Harness。当前 Harness 的普通 HTTP 局域网 Web 功能可能不完整，且没有登录保护。</string>
+    <string name="experimental_web_notice">实验性连接：页面打开不代表所有功能可用。Harness 当前可能在局域网 HTTP 下阻止 RPC、设置、供应商或预设功能。</string>
     <string name="endpoint_label">Windows 主机地址</string>
     <string name="endpoint_hint">http://192.168.1.100:3080</string>
-    <string name="connect">连接</string>
+    <string name="connect">继续实验性连接</string>
     <string name="refresh">刷新</string>
     <string name="open_in_browser">使用浏览器打开</string>
     <string name="change_host">更换主机</string>

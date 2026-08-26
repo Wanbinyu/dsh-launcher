@@ -3,7 +3,7 @@
 [简体中文](README.md) | [English](README.en.md)
 
 > [!IMPORTANT]
-> **Android 下载前必读：必须有电脑，APK 不能独立运行 DeepSeek Harness。** DeepSeek Harness 官方目前没有提供 Android 本机安装与运行方式，这是官方当前运行环境的限制，并非安装 APK 后就能绕过。本仓库的 Android 应用是独立开发的非官方局域网客户端，只负责连接和控制一台已经运行 Harness 的 Windows 电脑；安卓设备与电脑必须处于同一个可信私有网络。请先阅读带完整提示的 [Android v0.1.1 下载页](https://github.com/Wanbinyu/dsh-launcher/releases/tag/android-v0.1.1)，不要从第三方来源下载。
+> **Android 版是实验性客户端，必须有电脑，APK 不能独立运行 DeepSeek Harness。** DeepSeek Harness 官方目前没有提供 Android 本机安装与运行方式；当前 `0.1.1-rc.2` 在普通局域网 HTTP 下还存在 UUID、Host/Origin 校验和远程设置限制，即使页面打开也不能保证完整功能。本应用不会绕过官方安全边界。请先阅读 [Android v0.1.2 下载页](https://github.com/Wanbinyu/dsh-launcher/releases/tag/android-v0.1.2)，不要从第三方来源下载。
 
 <p align="center"><img src="assets/dsh-launcher.png" alt="dsh-launcher 图标" width="112"></p>
 
@@ -20,9 +20,9 @@
 | 平台 | 版本 | 定位 |
 | --- | --- | --- |
 | Windows | `0.3.7` | 主版本；在本机启动并管理 Harness。 |
-| Android | `0.1.1` | 局域网客户端；连接 Windows 主机，不在平板本机运行 Harness。 |
+| Android | `0.1.2` | 实验性局域网客户端；连接 Windows 主机，不保证完整远程 Web 功能。 |
 
-Android 版要求 Android 10 或更高版本，只能在可信私有网络中使用。Harness 的 LAN 模式目前没有身份认证，详见 [Android 安装与安全说明](android/README.md)。
+Android 版要求 Android 10 或更高版本，只能在可信私有网络中测试。Harness 的 LAN 模式目前没有身份认证，且普通 HTTP 远程访问存在已知限制，详见 [Android 安装与安全说明](android/README.md)。
 
 ## 功能
 

@@ -1,17 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">dsh-launcher (PC required)</string>
-    <string name="android_edition">Android client for a PC host</string>
+    <string name="app_name">dsh-launcher (experimental; PC required)</string>
+    <string name="android_edition">Experimental Android client for a PC host</string>
     <string name="app_icon_description">dsh-launcher icon</string>
     <string name="harness_title">DeepSeek Harness</string>
-    <string name="host_requirement_title">Before you continue: a PC is required</string>
-    <string name="host_requirement_message">DeepSeek Harness does not currently provide an official way to install or run Harness locally on Android.\n\nThis independently developed, unofficial LAN client only connects to and controls a Windows PC that is already running DeepSeek Harness. It cannot run Harness independently on a phone or tablet.\n\nThe Android device and PC must be on the same trusted private network. LAN mode currently has no login protection.</string>
-    <string name="host_requirement_confirm">I understand, continue</string>
+    <string name="host_requirement_title">Important limitation: not a complete Android edition</string>
+    <string name="host_requirement_message">DeepSeek Harness does not currently provide an official way to install or run Harness locally on Android.\n\nThis independently developed, unofficial experimental LAN client can only attempt to connect to a Windows PC already running Harness. On plain LAN HTTP origins, Harness 0.1.1-rc.2 has UUID, Host/Origin trust, and remote-settings limitations. Settings, providers, presets, or session features may fail even when the first page opens.\n\nThis app does not bypass those official security boundaries. Test only on a trusted private network you control; never use it over the public internet, public Wi-Fi, or a guest network.</string>
+    <string name="host_requirement_confirm">I understand, continue testing</string>
     <string name="exit">Exit</string>
-    <string name="trusted_network_notice">A Windows PC already running DeepSeek Harness is required. This app cannot run Harness independently on Android. Use only on a trusted private network; LAN mode currently has no login protection.</string>
+    <string name="trusted_network_notice">Experimental client: a Windows PC is required, and Harness cannot run locally on Android. Plain-HTTP LAN Web features may be incomplete and currently have no login protection.</string>
+    <string name="experimental_web_notice">Experimental connection: a page opening does not mean every feature works. Harness may currently block RPC, settings, provider, or preset features over LAN HTTP.</string>
     <string name="endpoint_label">Windows host address</string>
     <string name="endpoint_hint">http://192.168.1.100:3080</string>
-    <string name="connect">Connect</string>
+    <string name="connect">Continue experimental connection</string>
     <string name="refresh">Refresh</string>
     <string name="open_in_browser">Open in browser</string>
     <string name="change_host">Change host</string>

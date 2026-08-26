@@ -61,7 +61,7 @@ try {
     }
     $versionName = $versionMatch.Groups[1].Value
     $suffix = if ($DebugBuild) { '-debug' } else { '' }
-    $fileName = "dsh-launcher-android-v$versionName-requires-windows-pc$suffix.apk"
+    $fileName = "dsh-launcher-android-v$versionName-experimental-requires-windows-pc$suffix.apk"
     $target = Join-Path $dist $fileName
     Copy-Item -LiteralPath $source -Destination $target -Force
     $hash = (Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash.ToLowerInvariant()
