@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "profiles": [
+    {
+      "id": "beginner",
+      "nameZh": "新手入门",
+      "nameEn": "Getting started",
+      "summaryZh": "先获得清晰的任务状态和费用反馈，尽量少装、容易理解。",
+      "summaryEn": "Start with visible task status and cost feedback without installing too much."
+    },
+    {
+      "id": "coding",
+      "nameZh": "日常编程",
+      "nameEn": "Daily coding",
+      "summaryZh": "让 Harness 更安全地理解 Git 工作区，并在失败时给出可操作诊断。",
+      "summaryEn": "Give Harness safe Git context and actionable diagnostics when a run fails."
+    },
+    {
+      "id": "api-debug",
+      "nameZh": "API 调试",
+      "nameEn": "API debugging",
+      "summaryZh": "关注供应商连通性、延迟、错误分类和并发状态。",
+      "summaryEn": "Focus on provider connectivity, latency, failure categories, and concurrency."
+    },
+    {
+      "id": "cost-control",
+      "nameZh": "成本控制",
+      "nameEn": "Cost control",
+      "summaryZh": "查看费用、Token、额度和并发，减少超预算或触发限流的意外。",
+      "summaryEn": "Track cost, tokens, quota, and concurrency to avoid budget and rate-limit surprises."
+    },
+    {
+      "id": "long-running",
+      "nameZh": "长任务观察",
+      "nameEn": "Long-running tasks",
+      "summaryZh": "更直观地知道任务是否仍在运行、是否等待输入以及何时完成。",
+      "summaryEn": "See whether work is active, waiting for input, or complete at a glance."
+    },
+    {
+      "id": "complete",
+      "nameZh": "完整体验",
+      "nameEn": "Complete setup",
+      "summaryZh": "查看全部已验证插件；仍建议按需安装。",
+      "summaryEn": "Review every verified plugin, while still installing only what you need."
+    }
+  ],
+  "plugins": [
+    {
+      "id": "dsh-billing",
+      "name": "dsh-billing",
+      "version": "0.6.3",
+      "descriptionZh": "按 provider/model 显示费用、Token、会话额度和输入区费用进度。",
+      "descriptionEn": "Shows cost, tokens, session quota, and composer progress by provider and model.",
+      "reasonZh": "适合希望看清每轮成本、及时发现未定价模型的用户。",
+      "reasonEn": "Useful for understanding per-turn cost and finding unpriced models.",
+      "compatibility": "Harness 0.1.0-rc.6–rc.8; 0.1.1-rc.1–rc.2",
+      "privacy": "本地只读统计 / local read-only accounting",
+      "network": "不新增网络请求 / no added network requests",
+      "repositoryUrl": "https://github.com/Wanbinyu/dsh-billing",
+      "installCommand": "dsh plugin --profile web add https://github.com/Wanbinyu/dsh-billing/releases/download/v0.6.3/dsh-billing-community-bundle-0.6.3.tgz",
+      "profiles": ["beginner", "cost-control", "long-running", "complete"]
+    },
+    {
+      "id": "dsh-error-lens",
+      "name": "dsh-error-lens",
+      "version": "0.1.2",
+      "descriptionZh": "提供只读、脱敏的供应商错误分类和处理建议。",
+      "descriptionEn": "Provides read-only, redacted provider failure categories and guidance.",
+      "reasonZh": "适合编程和 API 调试，能把模糊失败整理成可执行建议。",
+      "reasonEn": "Turns vague coding and API failures into actionable guidance.",
+      "compatibility": "Harness 0.1.0-rc.6–rc.8; 0.1.1-rc.1–rc.2",
+      "privacy": "错误信息脱敏 / redacted diagnostics",
+      "network": "不新增网络请求 / no added network requests",
+      "repositoryUrl": "https://github.com/Wanbinyu/dsh-error-lens",
+      "installCommand": "dsh plugin --profile web add https://github.com/Wanbinyu/dsh-error-lens/releases/download/v0.1.2/dsh-error-lens-0.1.2.tgz",
+      "profiles": ["coding", "api-debug", "complete"]
+    },
+    {
+      "id": "dsh-concurrency-meter",
+      "name": "dsh-concurrency-meter",
+      "version": "0.1.2",
+      "descriptionZh": "只读显示活动请求、峰值并发、结果和供应商分组。",
+      "descriptionEn": "Shows active requests, peak concurrency, results, and provider groups read-only.",
+      "reasonZh": "适合并行或长任务，可快速判断是否仍在运行或接近限流。",
+      "reasonEn": "Helps long or parallel work reveal activity and possible rate-limit pressure.",
+      "compatibility": "Harness 0.1.0-rc.6–rc.8; 0.1.1-rc.1–rc.2",
+      "privacy": "仅状态与计数 / status and counts only",
+      "network": "不新增网络请求 / no added network requests",
+      "repositoryUrl": "https://github.com/Wanbinyu/dsh-concurrency-meter",
+      "installCommand": "dsh plugin --profile web add https://github.com/Wanbinyu/dsh-concurrency-meter/releases/download/v0.1.2/dsh-concurrency-meter-0.1.2.tgz",
+      "profiles": ["api-debug", "cost-control", "long-running", "complete"]
+    },
+    {
+      "id": "dsh-provider-probe",
+      "name": "dsh-provider-probe",
+      "version": "0.3.2",
+      "descriptionZh": "由用户手动触发供应商连通性、延迟和能力检查。",
+      "descriptionEn": "Runs explicit provider connectivity, latency, and capability checks.",
+      "reasonZh": "适合 API 调试；只有点击检查时才会访问所选供应商。",
+      "reasonEn": "Built for API debugging and contacts a provider only after an explicit check.",
+      "compatibility": "Harness 0.1.0-rc.6–rc.8; 0.1.1-rc.1–rc.2",
+      "privacy": "不读取密钥值 / never reads secret values",
+      "network": "仅手动检查时 / only during manual checks",
+      "repositoryUrl": "https://github.com/Wanbinyu/dsh-provider-probe",
+      "installCommand": "dsh plugin --profile web add https://github.com/Wanbinyu/dsh-provider-probe/releases/download/v0.3.2/dsh-provider-probe-0.3.2.tgz",
+      "profiles": ["api-debug", "complete"]
+    },
+    {
+      "id": "dsh-plugin-git-inspect",
+      "name": "dsh-plugin-git-inspect",
+      "version": "0.3.2",
+      "descriptionZh": "给 Agent 提供只读 Git 状态、diff、历史、提交和 refs 工具。",
+      "descriptionEn": "Provides read-only Git status, diff, history, commit, and refs tools.",
+      "reasonZh": "适合日常编程，不执行提交、推送、切换分支或修改文件。",
+      "reasonEn": "Designed for daily coding without commits, pushes, branch switches, or file changes.",
+      "compatibility": "Harness 0.1.0-rc.5–rc.8; 0.1.1-rc.1–rc.2",
+      "privacy": "只读 Git 输出 / read-only Git output",
+      "network": "不访问远程仓库 / no remote repository access",
+      "repositoryUrl": "https://github.com/Wanbinyu/dsh-plugin-git-inspect",
+      "installCommand": "dsh plugin --profile web add https://github.com/Wanbinyu/dsh-plugin-git-inspect/releases/download/v0.3.2/dsh-plugin-git-inspect-0.3.2.tgz",
+      "profiles": ["coding", "complete"]
+    },
+    {
+      "id": "dsh-companion",
+      "name": "dsh-companion",
+      "version": "0.1.10",
+      "descriptionZh": "蓝色鲸鱼男孩桌面伙伴，用动作和气泡显示任务状态。",
+      "descriptionEn": "A blue whale-boy companion that communicates task state with motion and bubbles.",
+      "reasonZh": "适合新手和长任务，能直观看到思考、工具、等待、完成与错误。",
+      "reasonEn": "Makes thinking, tools, waiting, completion, and errors visible for new and long-running work.",
+      "compatibility": "Harness 0.1.0-rc.6–rc.8; 0.1.1-rc.1–rc.2",
+      "privacy": "不读提示词或回复 / no prompts or responses",
+      "network": "不新增网络请求 / no added network requests",
+      "repositoryUrl": "https://github.com/Wanbinyu/dsh-companion",
+      "installCommand": "dsh plugin --profile web add https://github.com/Wanbinyu/dsh-companion/releases/download/v0.1.10/dsh-companion-0.1.10.tgz",
+      "profiles": ["beginner", "long-running", "complete"]
+    }
+  ]
+}

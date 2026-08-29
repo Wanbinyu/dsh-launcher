@@ -31,7 +31,7 @@
 
 | 平台 | 版本 | 定位 |
 | --- | --- | --- |
-| Windows | `0.4.0` | 主版本；可安装、启动并管理 Harness。 |
+| Windows | `0.5.0` | 主版本；可安装、启动并管理 Harness，提供本地插件推荐向导。 |
 | Android | `0.1.2` | 实验性局域网客户端；连接 Windows 主机，不保证完整远程 Web 功能。 |
 
 Android 版要求 Android 10 或更高版本，只能在可信私有网络中测试。Harness 的 LAN 模式目前没有身份认证，且普通 HTTP 远程访问存在已知限制，详见 [Android 安装与安全说明](android/README.md)。
@@ -45,6 +45,8 @@ Android 版要求 Android 10 或更高版本，只能在可信私有网络中测
 - Harness 安装到当前用户独立目录，已有源码、全局包和 Web profile 始终优先，不会被覆盖。
 - 安装过程显示实时阶段、npm 输出和取消按钮；失败信息同时写入本地日志。
 - 系统托盘菜单：启动、打开网页、查看状态、重启、停止、Harness 安装/更新/修复/卸载、打开日志、赞赏作者和退出。
+- 托盘“小功能”提供插件与 Skills 推荐：可按新手、编程、API 调试、成本控制、长任务或完整体验筛选已验证插件，并复制固定 Release 安装命令。
+- 新安装或启动器版本更新后只询问一次使用方向；同一版本不重复打扰，之后可随时从托盘重新选择。
 - 托盘支持手动检查启动器更新，并可勾选自动检查；自动检查默认开启、每天最多访问一次 GitHub，发现新版后只提示，不静默下载安装。
 - 可选的本地赞赏窗口；完全自愿、不影响任何功能，不联网也不记录赞赏状态。
 - 提供 `dsh`、`deepseek` 两个命令入口，双击桌面快捷方式也可以启动。
@@ -138,6 +140,8 @@ dsh doctor --json --report .\dsh-doctor.json
 
 托盘中的“Harness 安装与管理”可以重新安装、更新或修复启动器受管副本，也可以只删除受管目录。删除操作不会触碰全局 Harness、`%USERPROFILE%\.dsh` Web profile、插件、会话或工作区。受管目录可通过 `DSH_LAUNCHER_MANAGED_ROOT` 改写，适合测试或自定义部署。
 
+托盘“小功能 → 插件与 Skills 推荐”使用随安装器内置的本地规则，不调用大模型，也不读取 Harness 会话、工作区、提示词、回复、路径或密钥。选择的使用方向和当前版本的已提示标记仅保存在 `%LOCALAPPDATA%\dsh-launcher\recommendations.json`。推荐窗口不会静默安装插件，只会复制用户勾选项目的固定 Release 命令；运行前仍应查看对应仓库说明。当前清单只收录带 bundle 清单和可复现安装地址的项目，不把仅使用 `dsh-plugin` 话题的仓库当成可安装插件。
+
 DeepSeek Harness `rc.8` 开始会自行打开 Web 页面。启动器读取本地包版本，并在后台托管 `rc.8+` 时传入 `--no-open`，继续由托盘统一等待服务就绪后只打开一次；`rc.7` 保持原有启动参数。
 
 如果目标网页地址在启动前已经有服务响应，启动器不会再拉起第二个 Harness 进程，而是复用现有服务并打开网页；这也可以避免端口被其他服务占用时重复启动。
@@ -228,7 +232,7 @@ powershell -ExecutionPolicy Bypass -File .\installer\build.ps1 -SkipInstaller
 powershell -ExecutionPolicy Bypass -File .\tests\verify-release-assets.ps1 -SkipInstaller
 ```
 
-图标脚本从项目内 SVG 源文件生成 README 预览图和包含 9 种尺寸的 ICO。测试覆盖默认补 `web`、显式参数透传、可配置 CLI 路径、启动请求合并和图标资源嵌入。Doctor 可用 `dsh doctor --json` 做无弹窗验证。GitHub Actions 会实际生成 Windows 便携版与安装器并核对版本和 SHA256，同时执行 Android Debug/Release 测试、lint、R8 和打包。托盘运行仍需在 Windows 桌面会话中验证。
+图标脚本从项目内 SVG 源文件生成 README 预览图和包含 9 种尺寸的 ICO。测试覆盖默认补 `web`、显式参数透传、可配置 CLI 路径、启动请求合并、推荐偏好、内置插件清单、推荐窗口和图标资源嵌入。Doctor 可用 `dsh doctor --json` 做无弹窗验证。GitHub Actions 会实际生成 Windows 便携版与安装器并核对版本和 SHA256，同时执行 Android Debug/Release 测试、lint、R8 和打包。托盘运行仍需在 Windows 桌面会话中验证。
 
 ## 项目边界
 

@@ -67,22 +67,25 @@ VerifyManagedInstallCommands();
 VerifySponsorWindow();
 VerifyUpdateParsing();
 VerifyUpdatePreferences();
+VerifyRecommendationPreferences();
+VerifyRecommendationCatalog();
+VerifyRecommendationWindow();
 Console.WriteLine("DshLauncher tests passed.");
 
 static void VerifyUpdateParsing()
 {
     var available = UpdateChecker.ParseLatestRelease(
-        "{\"tag_name\":\"v0.4.1\"}",
-        new Version(0, 4, 0, 0));
-    if (!available.IsUpdateAvailable || available.LatestVersion != new Version(0, 4, 1) ||
-        available.ReleaseUri.AbsoluteUri != "https://github.com/Wanbinyu/dsh-launcher/releases/tag/v0.4.1")
+        "{\"tag_name\":\"v0.5.1\"}",
+        new Version(0, 5, 0, 0));
+    if (!available.IsUpdateAvailable || available.LatestVersion != new Version(0, 5, 1) ||
+        available.ReleaseUri.AbsoluteUri != "https://github.com/Wanbinyu/dsh-launcher/releases/tag/v0.5.1")
     {
         throw new InvalidOperationException("A newer launcher release was not detected correctly.");
     }
 
     var current = UpdateChecker.ParseLatestRelease(
-        "{\"tag_name\":\"0.4.0\"}",
-        new Version(0, 4, 0, 0));
+        "{\"tag_name\":\"0.5.0\"}",
+        new Version(0, 5, 0, 0));
     if (current.IsUpdateAvailable)
     {
         throw new InvalidOperationException("The current launcher release was reported as newer.");
@@ -90,7 +93,7 @@ static void VerifyUpdateParsing()
 
     try
     {
-        UpdateChecker.ParseLatestRelease("{\"tag_name\":\"not-a-version\"}", new Version(0, 4, 0));
+        UpdateChecker.ParseLatestRelease("{\"tag_name\":\"not-a-version\"}", new Version(0, 5, 0));
         throw new InvalidOperationException("An invalid launcher release tag was accepted.");
     }
     catch (InvalidDataException)
@@ -130,6 +133,93 @@ static void VerifyUpdatePreferences()
         {
             Directory.Delete(directory, recursive: true);
         }
+    }
+}
+
+static void VerifyRecommendationPreferences()
+{
+    var directory = Path.Combine(Path.GetTempPath(), $"dsh-launcher-recommendations-{Guid.NewGuid():N}");
+    var path = Path.Combine(directory, "recommendations.json");
+    try
+    {
+        var store = new RecommendationPreferencesStore(path);
+        var initial = store.Load();
+        if (!initial.NeedsPrompt("0.5.0") || initial.SelectedProfileId is not null)
+        {
+            throw new InvalidOperationException("Recommendation preferences did not use first-run defaults.");
+        }
+
+        store.Save(new RecommendationPreferences(
+            LastPromptedVersion: "0.5.0",
+            SelectedProfileId: "api-debug"));
+        var saved = store.Load();
+        if (saved.NeedsPrompt("0.5.0") ||
+            !saved.NeedsPrompt("0.5.1") ||
+            saved.SelectedProfileId != "api-debug")
+        {
+            throw new InvalidOperationException("Recommendation prompt version or profile did not round-trip.");
+        }
+
+        File.WriteAllText(path, "invalid json");
+        if (!store.Load().NeedsPrompt("0.5.0"))
+        {
+            throw new InvalidOperationException("Invalid recommendation preferences did not use safe defaults.");
+        }
+    }
+    finally
+    {
+        if (Directory.Exists(directory))
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+}
+
+static void VerifyRecommendationCatalog()
+{
+    var catalog = PluginRecommendationCatalog.LoadEmbedded();
+    if (catalog.Profiles.Count != 6 || catalog.Plugins.Count != 6 ||
+        catalog.ForProfile("coding").Count != 2 ||
+        catalog.ForProfile("complete").Count != 6 ||
+        catalog.Plugins.Any(plugin =>
+            !plugin.InstallCommand.StartsWith("dsh plugin --profile web add https://", StringComparison.Ordinal) ||
+            !plugin.RepositoryUrl.StartsWith("https://github.com/Wanbinyu/", StringComparison.Ordinal)))
+    {
+        throw new InvalidOperationException("The embedded plugin recommendation catalog is incomplete.");
+    }
+
+    try
+    {
+        PluginRecommendationCatalog.Parse("{\"schemaVersion\":2,\"profiles\":[],\"plugins\":[]}");
+        throw new InvalidOperationException("An unsupported recommendation catalog was accepted.");
+    }
+    catch (InvalidDataException)
+    {
+    }
+}
+
+static void VerifyRecommendationWindow()
+{
+    var catalog = PluginRecommendationCatalog.LoadEmbedded();
+    string? selectedProfile = null;
+    using var form = new PluginRecommendationForm(
+        catalog,
+        "api-debug",
+        System.Drawing.SystemIcons.Application,
+        profile => selectedProfile = profile);
+    var controls = Descendants(form).ToArray();
+    if (form.MaximizeBox || form.MinimizeBox ||
+        form.SelectedProfileId != "api-debug" ||
+        selectedProfile != "api-debug" ||
+        form.VisiblePluginCount != 3 ||
+        controls.OfType<System.Windows.Forms.ComboBox>().SingleOrDefault()?.Items.Count != 6 ||
+        controls.OfType<System.Windows.Forms.ListView>().SingleOrDefault()?.CheckedItems.Count != 3 ||
+        !controls.OfType<System.Windows.Forms.Label>().Any(label =>
+            label.Text.Contains("不会读取会话、文件或密钥", StringComparison.Ordinal)) ||
+        !controls.OfType<System.Windows.Forms.Button>().Any(button =>
+            button.Text.Contains("复制已选安装命令", StringComparison.Ordinal)))
+    {
+        throw new InvalidOperationException("The plugin recommendation window is incomplete.");
     }
 }
 

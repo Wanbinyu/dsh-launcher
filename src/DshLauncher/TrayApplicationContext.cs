@@ -1,4 +1,5 @@
 using System.IO.Pipes;
+using System.Reflection;
 using System.Threading;
 using System.Windows.Forms;
 
@@ -21,12 +22,16 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private readonly CancellationTokenSource _controlCancellation = new();
     private readonly UpdateChecker _updateChecker;
     private readonly UpdatePreferencesStore _updatePreferencesStore;
+    private readonly PluginRecommendationCatalog _recommendationCatalog;
+    private readonly RecommendationPreferencesStore _recommendationPreferencesStore;
     private StartupSplashForm? _startupSplash;
     private SponsorForm? _sponsorForm;
+    private PluginRecommendationForm? _recommendationForm;
     private ToolStripMenuItem? _checkUpdatesMenuItem;
     private ToolStripMenuItem? _autoCheckUpdatesMenuItem;
     private Task<StartResult>? _splashOperation;
     private UpdatePreferences _updatePreferences;
+    private RecommendationPreferences _recommendationPreferences;
     private Uri? _availableUpdateUri;
     private bool _checkingUpdates;
     private bool _exiting;
@@ -47,6 +52,9 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _updateChecker = new UpdateChecker();
         _updatePreferencesStore = UpdatePreferencesStore.CreateDefault();
         _updatePreferences = _updatePreferencesStore.Load();
+        _recommendationCatalog = PluginRecommendationCatalog.LoadEmbedded();
+        _recommendationPreferencesStore = RecommendationPreferencesStore.CreateDefault();
+        _recommendationPreferences = _recommendationPreferencesStore.Load();
 
         _menu = CreateMenu();
         _applicationIcon = LoadApplicationIcon();
@@ -62,7 +70,8 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
         _logger.Info($"Tray instance started. Web URL: {_config.WebUrl}.");
         _ = RunControlServerAsync();
-        _ = StartAndOpenAsync(openBrowserOnStart, showErrors: true);
+        var startup = StartAndOpenAsync(openBrowserOnStart, showErrors: true);
+        _ = ShowRecommendationAfterStartupAsync(startup);
         _ = RunAutomaticUpdateCheckAsync();
     }
 
@@ -89,6 +98,14 @@ internal sealed class TrayApplicationContext : ApplicationContext
             "卸载受管 Harness / Remove managed Harness",
             HandleRemoveManagedHarnessClick));
         menu.Items.Add(harnessMenu);
+        var utilitiesMenu = new ToolStripMenuItem("小功能 / Utilities");
+        utilitiesMenu.DropDownItems.Add(CreateMenuItem(
+            "插件与 Skills 推荐 / Plugin & Skills guide",
+            HandleRecommendationClick));
+        utilitiesMenu.DropDownItems.Add(CreateMenuItem(
+            "浏览 DSH 工具箱 / Open DSH Toolbox",
+            HandleToolboxClick));
+        menu.Items.Add(utilitiesMenu);
         menu.Items.Add(new ToolStripSeparator());
         _checkUpdatesMenuItem = CreateMenuItem(CheckUpdatesText, HandleCheckUpdatesClick);
         menu.Items.Add(_checkUpdatesMenuItem);
@@ -156,6 +173,110 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private void HandleSponsorClosed(object? sender, FormClosedEventArgs args)
     {
         _sponsorForm = null;
+    }
+
+    private void HandleRecommendationClick(object? sender, EventArgs args)
+    {
+        MarkRecommendationPrompted();
+        ShowRecommendationGuide();
+    }
+
+    private void HandleToolboxClick(object? sender, EventArgs args)
+    {
+        try
+        {
+            BrowserLauncher.Open(PluginRecommendationForm.ToolboxUri);
+        }
+        catch (Exception exception)
+        {
+            _logger.Error("Could not open the DSH Toolbox", exception);
+            ShowError($"无法打开 DSH 工具箱 / Could not open DSH Toolbox:\n{exception.Message}");
+        }
+    }
+
+    private async Task ShowRecommendationAfterStartupAsync(Task<string> startup)
+    {
+        try
+        {
+            await startup;
+            await Task.Delay(TimeSpan.FromMilliseconds(600), _controlCancellation.Token);
+            if (_exiting || !_recommendationPreferences.NeedsPrompt(CurrentLauncherVersion()))
+            {
+                return;
+            }
+
+            MarkRecommendationPrompted();
+            ShowRecommendationGuide();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception exception)
+        {
+            _logger.Error("Could not show the plugin recommendation guide", exception);
+        }
+    }
+
+    private void ShowRecommendationGuide()
+    {
+        if (_recommendationForm is null || _recommendationForm.IsDisposed)
+        {
+            _recommendationForm = new PluginRecommendationForm(
+                _recommendationCatalog,
+                _recommendationPreferences.SelectedProfileId,
+                _applicationIcon,
+                SaveSelectedRecommendationProfile);
+            _recommendationForm.FormClosed += HandleRecommendationClosed;
+            _recommendationForm.Show();
+            return;
+        }
+
+        if (_recommendationForm.WindowState == FormWindowState.Minimized)
+        {
+            _recommendationForm.WindowState = FormWindowState.Normal;
+        }
+        _recommendationForm.Activate();
+    }
+
+    private void HandleRecommendationClosed(object? sender, FormClosedEventArgs args)
+    {
+        _recommendationForm = null;
+    }
+
+    private void MarkRecommendationPrompted()
+    {
+        _recommendationPreferences = _recommendationPreferences with
+        {
+            LastPromptedVersion = CurrentLauncherVersion(),
+        };
+        SaveRecommendationPreferences();
+    }
+
+    private void SaveSelectedRecommendationProfile(string profileId)
+    {
+        _recommendationPreferences = _recommendationPreferences with
+        {
+            SelectedProfileId = profileId,
+        };
+        SaveRecommendationPreferences();
+    }
+
+    private void SaveRecommendationPreferences()
+    {
+        try
+        {
+            _recommendationPreferencesStore.Save(_recommendationPreferences);
+        }
+        catch (Exception exception)
+        {
+            _logger.Error("Could not save recommendation preferences", exception);
+        }
+    }
+
+    internal static string CurrentLauncherVersion()
+    {
+        var assembly = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 0, 0);
+        return new Version(assembly.Major, assembly.Minor, Math.Max(assembly.Build, 0)).ToString(3);
     }
 
     private async void HandleCheckUpdatesClick(object? sender, EventArgs args)
@@ -847,6 +968,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _controlCancellation.Cancel();
         CloseStartupSplash();
         CloseSponsorForm();
+        CloseRecommendationForm();
         try
         {
             await _supervisor.StopAsync();
@@ -879,6 +1001,20 @@ internal sealed class TrayApplicationContext : ApplicationContext
         }
 
         form.FormClosed -= HandleSponsorClosed;
+        form.Close();
+        form.Dispose();
+    }
+
+    private void CloseRecommendationForm()
+    {
+        var form = _recommendationForm;
+        _recommendationForm = null;
+        if (form is null)
+        {
+            return;
+        }
+
+        form.FormClosed -= HandleRecommendationClosed;
         form.Close();
         form.Dispose();
     }

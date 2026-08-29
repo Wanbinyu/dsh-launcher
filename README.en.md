@@ -31,7 +31,7 @@ Visit **[Wanbinyu DSH Toolbox](https://wanbinyu.github.io/wanbinyu-harness-toolb
 
 | Platform | Version | Role |
 | --- | --- | --- |
-| Windows | `0.4.0` | Primary edition; installs, starts, and manages Harness locally. |
+| Windows | `0.5.0` | Primary edition; installs, starts, and manages Harness with a local plugin guide. |
 | Android | `0.1.2` | Experimental LAN client; connects to Windows but cannot guarantee complete remote Web functionality. |
 
 The Android edition requires Android 10 or newer and must be tested only on a trusted private network. Harness LAN mode currently has no authentication and plain-HTTP remote access has known limitations. See the [Android setup and security guide](android/README.en.md).
@@ -45,6 +45,8 @@ The Android edition requires Android 10 or newer and must be tested only on a tr
 - Uses a per-user managed Harness directory without overwriting a source checkout, global package, or existing Web profile; existing installations remain preferred.
 - Shows live setup stages, npm output, cancellation, and actionable failures that are also written to the local log.
 - Tray menu for start, open web, status, restart, stop, Harness install/update/repair/removal, logs, optional support, and exit.
+- A Plugin & Skills guide under Tray → Utilities groups verified plugins for getting started, coding, API debugging, cost control, long-running work, or a complete setup, then copies pinned Release commands.
+- The workflow question appears once after a new installation or launcher version update. It does not repeat for the same version and remains available from the tray.
 - Manual launcher update checks plus an auto-check toggle; auto-check is enabled by default, contacts GitHub at most once per day, and only notifies instead of silently downloading or installing.
 - An optional local support window; donations are entirely voluntary, unlock nothing, make no network calls, and are not tracked.
 - Provides both `dsh` and `deepseek` command entrypoints; a desktop shortcut can launch it directly.
@@ -138,6 +140,8 @@ The progress window and tray icon appear immediately while Harness starts. The w
 
 The tray's Harness setup and repair submenu can reinstall, update, or repair the launcher-managed copy and can remove only that managed directory. Removal does not touch a global Harness installation, the `%USERPROFILE%\.dsh` Web profile, plugins, sessions, or workspaces. `DSH_LAUNCHER_MANAGED_ROOT` can override the managed path for testing or custom deployments.
 
+Tray → Utilities → Plugin & Skills guide uses rules embedded in the installer. It does not call a model or read Harness sessions, workspaces, prompts, responses, paths, or secrets. The selected workflow and the version-level prompt marker stay only in `%LOCALAPPDATA%\dsh-launcher\recommendations.json`. The guide never installs silently: it copies pinned Release commands for the checked projects, which should still be reviewed before use. The current catalog lists only projects with a bundle manifest and a reproducible package URL; a repository topic alone does not qualify it as an installable plugin.
+
 DeepSeek Harness `rc.8` and newer releases open the Web UI themselves. When the launcher supervises those versions in the background, it reads the installed package version and passes `--no-open`, then keeps ownership of readiness and opens one tab. `rc.7` keeps its original arguments.
 
 When the configured web URL is already responding before startup, the launcher does not start a second Harness process. It reuses the existing service and opens the browser, which also avoids duplicating a process when the port is occupied by another service.
@@ -228,7 +232,7 @@ powershell -ExecutionPolicy Bypass -File .\installer\build.ps1 -SkipInstaller
 powershell -ExecutionPolicy Bypass -File .\tests\verify-release-assets.ps1 -SkipInstaller
 ```
 
-The icon script generates the README preview and a nine-size ICO from the project SVG sources. Tests cover default `web` injection, explicit argument pass-through, configurable CLI paths, coalesced startup requests, and the embedded icon resource. Doctor can be tested without a dialog through `dsh doctor --json`. GitHub Actions builds the Windows portable executable and installer, verifies their version and SHA256 files, and runs Android Debug/Release tests, lint, R8, and packaging. Tray behavior must still be verified in a Windows desktop session.
+The icon script generates the README preview and a nine-size ICO from the project SVG sources. Tests cover default `web` injection, explicit argument pass-through, configurable CLI paths, coalesced startup requests, recommendation preferences, the embedded catalog, the guide window, and the icon resource. Doctor can be tested without a dialog through `dsh doctor --json`. GitHub Actions builds the Windows portable executable and installer, verifies their version and SHA256 files, and runs Android Debug/Release tests, lint, R8, and packaging. Tray behavior must still be verified in a Windows desktop session.
 
 ## Project Boundary
 
