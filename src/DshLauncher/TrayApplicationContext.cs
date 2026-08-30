@@ -24,6 +24,8 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private readonly UpdatePreferencesStore _updatePreferencesStore;
     private readonly PluginRecommendationCatalog _recommendationCatalog;
     private readonly RecommendationPreferencesStore _recommendationPreferencesStore;
+    private readonly RecommendationInstallInspector _recommendationInstallInspector;
+    private readonly RecommendationSourceHealthChecker _recommendationSourceHealthChecker;
     private StartupSplashForm? _startupSplash;
     private SponsorForm? _sponsorForm;
     private PluginRecommendationForm? _recommendationForm;
@@ -55,6 +57,10 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _recommendationCatalog = PluginRecommendationCatalog.LoadEmbedded();
         _recommendationPreferencesStore = RecommendationPreferencesStore.CreateDefault();
         _recommendationPreferences = _recommendationPreferencesStore.Load();
+        _recommendationInstallInspector = new RecommendationInstallInspector(
+            cancellationToken => _runnerResolver.ResolveAsync(cancellationToken),
+            logger);
+        _recommendationSourceHealthChecker = new RecommendationSourceHealthChecker();
 
         _menu = CreateMenu();
         _applicationIcon = LoadApplicationIcon();
@@ -225,7 +231,10 @@ internal sealed class TrayApplicationContext : ApplicationContext
                 _recommendationCatalog,
                 _recommendationPreferences.SelectedProfileId,
                 _applicationIcon,
-                SaveSelectedRecommendationProfile);
+                SaveSelectedRecommendationProfile,
+                () => _ = StartAndOpenAsync(openBrowser: true, showErrors: true),
+                _recommendationInstallInspector,
+                _recommendationSourceHealthChecker);
             _recommendationForm.FormClosed += HandleRecommendationClosed;
             _recommendationForm.Show();
             return;
@@ -980,6 +989,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
         _supervisor.Dispose();
         _updateChecker.Dispose();
+        _recommendationSourceHealthChecker.Dispose();
         _notifyIcon.Visible = false;
         _notifyIcon.BalloonTipClicked -= HandleUpdateNotificationClick;
         _notifyIcon.Dispose();

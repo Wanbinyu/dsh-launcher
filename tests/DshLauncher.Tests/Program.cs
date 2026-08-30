@@ -69,6 +69,7 @@ VerifyUpdateParsing();
 VerifyUpdatePreferences();
 VerifyRecommendationPreferences();
 VerifyRecommendationCatalog();
+await VerifyRecommendationSourceHealthAsync();
 VerifyRecommendationWindow();
 Console.WriteLine("DshLauncher tests passed.");
 
@@ -151,11 +152,11 @@ static void VerifyRecommendationPreferences()
 
         store.Save(new RecommendationPreferences(
             LastPromptedVersion: "0.5.0",
-            SelectedProfileId: "api-debug"));
+            SelectedProfileId: "ai-cost"));
         var saved = store.Load();
         if (saved.NeedsPrompt("0.5.0") ||
             !saved.NeedsPrompt("0.5.1") ||
-            saved.SelectedProfileId != "api-debug")
+            saved.SelectedProfileId != "ai-cost")
         {
             throw new InvalidOperationException("Recommendation prompt version or profile did not round-trip.");
         }
@@ -178,20 +179,61 @@ static void VerifyRecommendationPreferences()
 static void VerifyRecommendationCatalog()
 {
     var catalog = PluginRecommendationCatalog.LoadEmbedded();
-    if (catalog.Profiles.Count != 6 || catalog.Plugins.Count != 6 ||
-        catalog.ForProfile("coding").Count != 2 ||
-        catalog.ForProfile("complete").Count != 6 ||
+    if (catalog.Profiles.Count != 10 ||
+        catalog.Items.Count != 19 ||
+        catalog.Plugins.Count != 11 ||
+        catalog.Skills.Count != 8 ||
+        catalog.ForProfile("office").Count != 6 ||
+        catalog.ForProfile("software").Count != 6 ||
+        catalog.ForProfile("complete").Count != 19 ||
         catalog.Plugins.Any(plugin =>
-            !plugin.InstallCommand.StartsWith("dsh plugin --profile web add https://", StringComparison.Ordinal) ||
-            !plugin.RepositoryUrl.StartsWith("https://github.com/Wanbinyu/", StringComparison.Ordinal)))
+            !plugin.InstallCommand.StartsWith("dsh plugin --profile web add ", StringComparison.Ordinal)) ||
+        catalog.Skills.Any(skill =>
+            !skill.InstallCommand.StartsWith("$env:DO_NOT_TRACK='1'; npx -y skills add ", StringComparison.Ordinal) ||
+            !skill.InstallCommand.EndsWith(" -a universal --copy -y", StringComparison.Ordinal)) ||
+        !catalog.Items.Any(item => item.Publisher == "Anthropic") ||
+        !catalog.Items.Any(item => item.Publisher == "PensiveFei") ||
+        !catalog.Items.Any(item => item.Publisher == "Wanbinyu"))
     {
-        throw new InvalidOperationException("The embedded plugin recommendation catalog is incomplete.");
+        throw new InvalidOperationException("The embedded plugin and Skills recommendation catalog is incomplete.");
+    }
+
+    if (catalog.Profiles
+        .Where(profile => profile.Id != "complete")
+        .Any(profile => catalog.ForProfile(profile.Id).Count is < 3 or > 6))
+    {
+        throw new InvalidOperationException("A normal workflow should recommend only three to six items.");
+    }
+
+    var installationRequest = PluginRecommendationForm.BuildInstallationRequest(new[]
+    {
+        catalog.Skills[0],
+        catalog.Plugins[0],
+    });
+    if (!installationRequest.StartsWith("请帮我安装下面选中的 DeepSeek Harness 插件和 Skills。", StringComparison.Ordinal) ||
+        !installationRequest.Contains("DO_NOT_TRACK=1", StringComparison.Ordinal) ||
+        !installationRequest.Contains("不要读取或修改 API Key", StringComparison.Ordinal) ||
+        !installationRequest.Contains("命令：dsh plugin --profile web add", StringComparison.Ordinal) ||
+        installationRequest.Contains("dsh restart", StringComparison.Ordinal))
+    {
+        throw new InvalidOperationException("The generated Harness installation request is incomplete or unsafe.");
+    }
+
+    string? copiedRequest = null;
+    var harnessOpened = false;
+    PluginRecommendationForm.CopyInstallationRequest(
+        installationRequest,
+        text => copiedRequest = text,
+        () => harnessOpened = true);
+    if (copiedRequest != installationRequest || !harnessOpened)
+    {
+        throw new InvalidOperationException("Copying the request did not hand off to Harness.");
     }
 
     try
     {
-        PluginRecommendationCatalog.Parse("{\"schemaVersion\":2,\"profiles\":[],\"plugins\":[]}");
-        throw new InvalidOperationException("An unsupported recommendation catalog was accepted.");
+        PluginRecommendationCatalog.Parse("{\"schemaVersion\":1,\"profiles\":[],\"items\":[]}");
+        throw new InvalidOperationException("An unsupported recommendation schema was accepted.");
     }
     catch (InvalidDataException)
     {
@@ -202,24 +244,138 @@ static void VerifyRecommendationWindow()
 {
     var catalog = PluginRecommendationCatalog.LoadEmbedded();
     string? selectedProfile = null;
+    var openHarnessInvoked = false;
     using var form = new PluginRecommendationForm(
         catalog,
-        "api-debug",
+        "office",
         System.Drawing.SystemIcons.Application,
-        profile => selectedProfile = profile);
+        profile => selectedProfile = profile,
+        () => openHarnessInvoked = true);
     var controls = Descendants(form).ToArray();
     if (form.MaximizeBox || form.MinimizeBox ||
-        form.SelectedProfileId != "api-debug" ||
-        selectedProfile != "api-debug" ||
-        form.VisiblePluginCount != 3 ||
-        controls.OfType<System.Windows.Forms.ComboBox>().SingleOrDefault()?.Items.Count != 6 ||
-        controls.OfType<System.Windows.Forms.ListView>().SingleOrDefault()?.CheckedItems.Count != 3 ||
+        form.SelectedProfileId != "office" ||
+        selectedProfile != "office" ||
+        openHarnessInvoked ||
+        form.VisibleItemCount != 6 ||
+        form.CheckedItemCount != 6 ||
+        controls.OfType<System.Windows.Forms.ComboBox>()
+            .SingleOrDefault(combo => combo.AccessibleName == "使用方向 / Workflow")?.Items.Count != 10 ||
+        !form.SelectedItemDetails.Contains(catalog.ForProfile("office")[0].DescriptionZh, StringComparison.Ordinal) ||
+        !form.SelectedItemDetails.Contains(catalog.ForProfile("office")[0].DescriptionEn, StringComparison.Ordinal) ||
+        !form.InstallationRequestPreview.Contains("请帮我安装", StringComparison.Ordinal) ||
+        !form.InstallationRequestPreview.Contains("npx -y skills add", StringComparison.Ordinal) ||
+        !form.InstallationRequestPreview.Contains("dsh plugin --profile web add", StringComparison.Ordinal) ||
         !controls.OfType<System.Windows.Forms.Label>().Any(label =>
             label.Text.Contains("不会读取会话、文件或密钥", StringComparison.Ordinal)) ||
         !controls.OfType<System.Windows.Forms.Button>().Any(button =>
-            button.Text.Contains("复制已选安装命令", StringComparison.Ordinal)))
+            button.Text.Contains("复制安装请求并打开 Harness", StringComparison.Ordinal)))
     {
-        throw new InvalidOperationException("The plugin recommendation window is incomplete.");
+        throw new InvalidOperationException("The plugin and Skills recommendation window is incomplete.");
+    }
+
+    form.SetSearchTextForTest("Excel");
+    if (form.VisibleItemCount != 1)
+    {
+        throw new InvalidOperationException("Recommendation search did not match bilingual descriptions.");
+    }
+
+    form.SetSearchTextForTest(string.Empty);
+    form.SetKindFilterForTest("skill");
+    if (form.VisibleItemCount != 3)
+    {
+        throw new InvalidOperationException("The Skill filter returned an unexpected office catalog.");
+    }
+
+    form.SetKindFilterForTest("all");
+    form.SetLicenseFilterForTest("open");
+    if (form.VisibleItemCount != 3)
+    {
+        throw new InvalidOperationException("The open-source filter returned an unexpected office catalog.");
+    }
+
+    form.SetLicenseFilterForTest("all");
+    var automation = catalog.Items.Single(item => item.Id == "dsh-automation");
+    form.ApplyInstallStatusesForTest(new Dictionary<string, RecommendationInstallStatus>
+    {
+        [automation.Id] = new(
+            RecommendationInstallState.InstalledCurrent,
+            automation.Version),
+    });
+    form.SetHideInstalledForTest(true);
+    if (form.VisibleItemCount != 5 || form.CheckedItemCount != 5 ||
+        form.InstallationRequestPreview.Contains(automation.InstallCommand, StringComparison.Ordinal))
+    {
+        throw new InvalidOperationException("Installed plugins were not removed from the filtered request.");
+    }
+
+    using var completeForm = new PluginRecommendationForm(
+        catalog,
+        "complete",
+        System.Drawing.SystemIcons.Application,
+        _ => { },
+        () => { });
+    if (completeForm.VisibleItemCount != 19 || completeForm.CheckedItemCount != 0 ||
+        !completeForm.InstallationRequestPreview.Contains("默认不勾选", StringComparison.Ordinal))
+    {
+        throw new InvalidOperationException("The full catalog should be visible without selecting every item.");
+    }
+}
+
+static async Task VerifyRecommendationSourceHealthAsync()
+{
+    var catalog = PluginRecommendationCatalog.LoadEmbedded();
+    var billing = catalog.Items.Single(item => item.Id == "dsh-billing");
+    if (billing.PackageNameForInspection != "dsh-billing-community-bundle")
+    {
+        throw new InvalidOperationException("The billing bundle inspection name is incorrect.");
+    }
+
+    var installed = RecommendationInstallInspector.ParseInstalledPackages(
+        "[{\"dependencies\":{\"dsh-billing-community-bundle\":{\"version\":\"0.6.3\"}," +
+        "\"dsh-error-lens\":{\"version\":\"0.1.2\"}}}]");
+    if (installed["dsh-billing-community-bundle"] != "0.6.3" ||
+        installed["dsh-error-lens"] != "0.1.2")
+    {
+        throw new InvalidOperationException("Installed plugin list parsing is incorrect.");
+    }
+
+    var promptPresets = catalog.Items.Single(item => item.Id == "dsh-prompt-presets");
+    var manifestUri = RecommendationSourceHealthChecker.TryBuildManifestUri(promptPresets.RepositoryUrl);
+    var installUri = RecommendationSourceHealthChecker.BuildInstallSourceUri(promptPresets);
+    var patchUri = manifestUri is null
+        ? null
+        : RecommendationSourceHealthChecker.TryBuildBundlePatchUri(
+            manifestUri,
+            "./cordis.patch.yml");
+    if (manifestUri?.AbsoluteUri !=
+            "https://raw.githubusercontent.com/zhangdong456/dsh-prompt-presets/HEAD/package.json" ||
+        patchUri?.AbsoluteUri !=
+            "https://raw.githubusercontent.com/zhangdong456/dsh-prompt-presets/HEAD/cordis.patch.yml" ||
+        installUri.AbsoluteUri != "https://registry.npmjs.org/dsh-prompt-presets/1.0.4" ||
+        !RecommendationSourceHealthChecker.PackageDeclaresDshBundle(
+            "{\"dsh\":{\"bundle\":{\"patch\":\"./cordis.patch.yml\"}}}") ||
+        RecommendationSourceHealthChecker.PackageDeclaresDshBundle("{\"dsh\":{}}"))
+    {
+        throw new InvalidOperationException("Recommendation source validation helpers are incorrect.");
+    }
+
+    var xlsx = catalog.Items.Single(item => item.Id == "skill-xlsx");
+    using var client = new HttpClient(new RecommendationHealthStubHandler(request =>
+    {
+        var body = request.RequestUri == manifestUri
+            ? "{\"dsh\":{\"bundle\":{\"patch\":\"./cordis.patch.yml\"}}}"
+            : "{}";
+        return new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(body),
+        };
+    }));
+    using var checker = new RecommendationSourceHealthChecker(client);
+    var health = await checker.CheckAsync(new[] { promptPresets, xlsx });
+    if (health[promptPresets.Id].State != RecommendationSourceHealthState.Available ||
+        health[xlsx.Id].State != RecommendationSourceHealthState.Available)
+    {
+        throw new InvalidOperationException("Healthy recommendation sources were not recognized.");
     }
 }
 
@@ -687,5 +843,22 @@ static async Task VerifyManagedRemovalPreservesUnknownFilesAsync()
         {
             Directory.Delete(testDirectory, recursive: true);
         }
+    }
+}
+
+internal sealed class RecommendationHealthStubHandler : HttpMessageHandler
+{
+    private readonly Func<HttpRequestMessage, HttpResponseMessage> _handler;
+
+    public RecommendationHealthStubHandler(Func<HttpRequestMessage, HttpResponseMessage> handler)
+    {
+        _handler = handler;
+    }
+
+    protected override Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage request,
+        CancellationToken cancellationToken)
+    {
+        return Task.FromResult(_handler(request));
     }
 }

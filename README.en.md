@@ -31,7 +31,7 @@ Visit **[Wanbinyu DSH Toolbox](https://wanbinyu.github.io/wanbinyu-harness-toolb
 
 | Platform | Version | Role |
 | --- | --- | --- |
-| Windows | `0.5.0` | Primary edition; installs, starts, and manages Harness with a local plugin guide. |
+| Windows | `0.5.0` | Primary edition; installs, starts, and manages Harness with a local Plugin & Skills guide. |
 | Android | `0.1.2` | Experimental LAN client; connects to Windows but cannot guarantee complete remote Web functionality. |
 
 The Android edition requires Android 10 or newer and must be tested only on a trusted private network. Harness LAN mode currently has no authentication and plain-HTTP remote access has known limitations. See the [Android setup and security guide](android/README.en.md).
@@ -45,7 +45,12 @@ The Android edition requires Android 10 or newer and must be tested only on a tr
 - Uses a per-user managed Harness directory without overwriting a source checkout, global package, or existing Web profile; existing installations remain preferred.
 - Shows live setup stages, npm output, cancellation, and actionable failures that are also written to the local log.
 - Tray menu for start, open web, status, restart, stop, Harness install/update/repair/removal, logs, optional support, and exit.
-- A Plugin & Skills guide under Tray → Utilities groups verified plugins for getting started, coding, API debugging, cost control, long-running work, or a complete setup, then copies pinned Release commands.
+- A multi-publisher Plugin & Skills guide under Tray → Utilities covers office work, spreadsheets, management reporting, public administration, software development, AI cost control, research, visual design, and automation, plus a manually selected full catalog.
+- Every item shows bilingual purpose, rationale, publisher, license, requirements, privacy, and network details. Normal workflows preselect only three to six items; the full catalog preselects nothing. Package names and installation commands remain unchanged identifiers.
+- Search matches names, purposes, publishers, and bilingual keywords. Filters cover Plugin/Skill and open-source/restricted licenses, with an option to hide installed plugins.
+- The guide uses the official `dsh plugin --profile web list --depth 0 --json` command read-only to detect Web Profile package versions and unchecks matching versions. It does not guess workspace paths for Skills; Harness verifies those before installation.
+- Check sources runs only after an explicit click. It verifies pinned Skill paths, each plugin's declared `dsh.bundle.patch` file, and its npm or Release source, then shows the check time. A network failure marks an item unverified instead of removing it.
+- Copy installation request and open Harness creates a reviewable request with pinned sources and commands, then opens Harness. The user pastes and sends it for Harness to verify and install; the launcher never executes those commands itself.
 - The workflow question appears once after a new installation or launcher version update. It does not repeat for the same version and remains available from the tray.
 - Manual launcher update checks plus an auto-check toggle; auto-check is enabled by default, contacts GitHub at most once per day, and only notifies instead of silently downloading or installing.
 - An optional local support window; donations are entirely voluntary, unlock nothing, make no network calls, and are not tracked.
@@ -140,7 +145,13 @@ The progress window and tray icon appear immediately while Harness starts. The w
 
 The tray's Harness setup and repair submenu can reinstall, update, or repair the launcher-managed copy and can remove only that managed directory. Removal does not touch a global Harness installation, the `%USERPROFILE%\.dsh` Web profile, plugins, sessions, or workspaces. `DSH_LAUNCHER_MANAGED_ROOT` can override the managed path for testing or custom deployments.
 
-Tray → Utilities → Plugin & Skills guide uses rules embedded in the installer. It does not call a model or read Harness sessions, workspaces, prompts, responses, paths, or secrets. The selected workflow and the version-level prompt marker stay only in `%LOCALAPPDATA%\dsh-launcher\recommendations.json`. The guide never installs silently: it copies pinned Release commands for the checked projects, which should still be reviewed before use. The current catalog lists only projects with a bundle manifest and a reproducible package URL; a repository topic alone does not qualify it as an installable plugin.
+Tray → Utilities → Plugin & Skills guide uses rules embedded in the installer. It does not call a model or read Harness sessions, workspaces, prompts, responses, paths, or secrets. The selected workflow and the version-level prompt marker stay only in `%LOCALAPPDATA%\dsh-launcher\recommendations.json`.
+
+The catalog contains projects from multiple publishers, but a reviewed source is not an official DeepSeek endorsement. Plugins need a DSH bundle manifest and a reproducible npm or Release address. Skills are pinned to a specific GitHub commit and display their individual licenses. Anthropic's `xlsx`, `docx`, `pdf`, and `pptx` Skills use proprietary source-available terms and must not be described as open source. `doc-coauthoring` has no standalone license file, so its repository terms must be checked again before installation. Skill commands set `DO_NOT_TRACK=1` and use `-a universal --copy` so DSH can load them from the current workspace's `.agents/skills` directory.
+
+The guide neither installs silently nor automates the Harness page. The copy button places a natural-language installation request, sources, licenses, requirements, and commands on the clipboard, then opens Harness. The user presses `Ctrl+V`, reviews the request, and sends it. The request asks Harness to recheck versions and licenses, report each result, avoid relaxing `allowBuilds` after a failure, and remind the user to restart from the tray afterward. This preserves Harness approvals while keeping installation logic out of the launcher.
+
+Installation detection reads no session or workspace files. It only runs the official plugin-list command and parses package names and versions. Because `.agents/skills` belongs to the active Harness workspace, the launcher neither guesses nor scans possible workspace paths; the generated request asks Harness to check whether each Skill already exists. Source health is opt-in and contacts only the public GitHub, raw GitHub, npm, or Release addresses listed by the catalog. It uploads no choices, records no telemetry, and does not treat a temporary network failure as proof that a project is dead.
 
 DeepSeek Harness `rc.8` and newer releases open the Web UI themselves. When the launcher supervises those versions in the background, it reads the installed package version and passes `--no-open`, then keeps ownership of readiness and opens one tab. `rc.7` keeps its original arguments.
 

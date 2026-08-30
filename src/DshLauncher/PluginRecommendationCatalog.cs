@@ -12,23 +12,41 @@ internal sealed record RecommendationProfile(
 
 internal sealed record PluginRecommendation(
     string Id,
+    string Kind,
     string Name,
     string Version,
+    string Publisher,
+    string License,
     string DescriptionZh,
     string DescriptionEn,
     string ReasonZh,
     string ReasonEn,
     string Compatibility,
+    string Requirements,
     string Privacy,
     string Network,
     string RepositoryUrl,
     string InstallCommand,
-    string[] Profiles);
+    string[] Profiles,
+    string? InstalledPackageName = null)
+{
+    public bool IsSkill => string.Equals(Kind, "skill", StringComparison.OrdinalIgnoreCase);
+
+    public bool IsOpenSource =>
+        License.Contains("MIT", StringComparison.OrdinalIgnoreCase) ||
+        License.Contains("Apache-2.0", StringComparison.OrdinalIgnoreCase) ||
+        License.Contains("BSD-", StringComparison.OrdinalIgnoreCase) ||
+        License.Contains("MPL-", StringComparison.OrdinalIgnoreCase);
+
+    public string PackageNameForInspection => string.IsNullOrWhiteSpace(InstalledPackageName)
+        ? Name
+        : InstalledPackageName;
+}
 
 internal sealed record PluginRecommendationDocument(
     int SchemaVersion,
     RecommendationProfile[] Profiles,
-    PluginRecommendation[] Plugins);
+    PluginRecommendation[] Items);
 
 internal sealed class PluginRecommendationCatalog
 {
@@ -40,15 +58,21 @@ internal sealed class PluginRecommendationCatalog
 
     private PluginRecommendationCatalog(
         IReadOnlyList<RecommendationProfile> profiles,
-        IReadOnlyList<PluginRecommendation> plugins)
+        IReadOnlyList<PluginRecommendation> items)
     {
         Profiles = profiles;
-        Plugins = plugins;
+        Items = items;
     }
 
     public IReadOnlyList<RecommendationProfile> Profiles { get; }
 
-    public IReadOnlyList<PluginRecommendation> Plugins { get; }
+    public IReadOnlyList<PluginRecommendation> Items { get; }
+
+    public IReadOnlyList<PluginRecommendation> Plugins =>
+        Items.Where(item => !item.IsSkill).ToArray();
+
+    public IReadOnlyList<PluginRecommendation> Skills =>
+        Items.Where(item => item.IsSkill).ToArray();
 
     public static PluginRecommendationCatalog LoadEmbedded()
     {
@@ -66,15 +90,15 @@ internal sealed class PluginRecommendationCatalog
     {
         var document = JsonSerializer.Deserialize<PluginRecommendationDocument>(json, JsonOptions)
             ?? throw new InvalidDataException("The recommendation catalog is empty.");
-        if (document.SchemaVersion != 1)
+        if (document.SchemaVersion != 2)
         {
             throw new InvalidDataException(
                 $"Unsupported recommendation catalog schema: {document.SchemaVersion}.");
         }
 
-        if (document.Profiles.Length == 0 || document.Plugins.Length == 0)
+        if (document.Profiles is not { Length: > 0 } || document.Items is not { Length: > 0 })
         {
-            throw new InvalidDataException("The recommendation catalog must contain profiles and plugins.");
+            throw new InvalidDataException("The recommendation catalog must contain profiles and items.");
         }
 
         var profileIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -88,23 +112,50 @@ internal sealed class PluginRecommendationCatalog
             }
         }
 
-        var pluginIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var plugin in document.Plugins)
+        var itemIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var item in document.Items)
         {
-            if (string.IsNullOrWhiteSpace(plugin.Id) ||
-                string.IsNullOrWhiteSpace(plugin.Name) ||
-                !pluginIds.Add(plugin.Id) ||
-                plugin.Profiles.Length == 0 ||
-                plugin.Profiles.Any(profile => !profileIds.Contains(profile)) ||
-                !Uri.TryCreate(plugin.RepositoryUrl, UriKind.Absolute, out var repository) ||
+            var command = item.InstallCommand ?? string.Empty;
+            var validKind = string.Equals(item.Kind, "plugin", StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(item.Kind, "skill", StringComparison.OrdinalIgnoreCase);
+            var validCommand = !command.Contains('\r') &&
+                               !command.Contains('\n') &&
+                               (item.IsSkill
+                ? command.StartsWith(
+                      "$env:DO_NOT_TRACK='1'; npx -y skills add https://github.com/",
+                      StringComparison.Ordinal) &&
+                  command.EndsWith(" -a universal --copy -y", StringComparison.Ordinal)
+                : command.StartsWith("dsh plugin --profile web add ", StringComparison.Ordinal));
+            var validInspectionName = item.InstalledPackageName is null ||
+                                      (!item.IsSkill &&
+                                       !string.IsNullOrWhiteSpace(item.InstalledPackageName) &&
+                                       item.InstalledPackageName.All(character =>
+                                           !char.IsWhiteSpace(character) && !char.IsControl(character)));
+            if (string.IsNullOrWhiteSpace(item.Id) ||
+                string.IsNullOrWhiteSpace(item.Name) ||
+                string.IsNullOrWhiteSpace(item.Version) ||
+                string.IsNullOrWhiteSpace(item.Publisher) ||
+                string.IsNullOrWhiteSpace(item.License) ||
+                string.IsNullOrWhiteSpace(item.DescriptionZh) ||
+                string.IsNullOrWhiteSpace(item.ReasonZh) ||
+                string.IsNullOrWhiteSpace(item.Compatibility) ||
+                string.IsNullOrWhiteSpace(item.Requirements) ||
+                string.IsNullOrWhiteSpace(item.Privacy) ||
+                string.IsNullOrWhiteSpace(item.Network) ||
+                !validKind ||
+                !validInspectionName ||
+                !itemIds.Add(item.Id) ||
+                item.Profiles is not { Length: > 0 } ||
+                item.Profiles.Any(profile => !profileIds.Contains(profile)) ||
+                !Uri.TryCreate(item.RepositoryUrl, UriKind.Absolute, out var repository) ||
                 repository.Scheme != Uri.UriSchemeHttps ||
-                !plugin.InstallCommand.StartsWith("dsh plugin --profile web add https://", StringComparison.Ordinal))
+                !validCommand)
             {
-                throw new InvalidDataException($"The recommendation catalog contains an invalid plugin: {plugin.Id}.");
+                throw new InvalidDataException($"The recommendation catalog contains an invalid item: {item.Id}.");
             }
         }
 
-        return new PluginRecommendationCatalog(document.Profiles, document.Plugins);
+        return new PluginRecommendationCatalog(document.Profiles, document.Items);
     }
 
     public RecommendationProfile ResolveProfile(string? profileId)
@@ -118,7 +169,7 @@ internal sealed class PluginRecommendationCatalog
 
     public IReadOnlyList<PluginRecommendation> ForProfile(string profileId)
     {
-        return Plugins.Where(plugin => plugin.Profiles.Contains(
+        return Items.Where(item => item.Profiles.Contains(
                 profileId,
                 StringComparer.OrdinalIgnoreCase))
             .ToArray();
