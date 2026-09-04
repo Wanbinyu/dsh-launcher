@@ -312,7 +312,9 @@ internal sealed class ProcessSupervisor : IDisposable
             Ready: false,
             Exited: false,
             ExitCode: null,
-            Message: $"DeepSeek Harness is still starting. Open {_config.WebUrl} when it is ready.");
+            Message:
+                $"DeepSeek Harness did not respond at {_config.WebUrl} within {_config.StartupTimeout.TotalSeconds:0} seconds. " +
+                "It may still be starting in the background.");
     }
 
     internal static RunnerSpec AddWebCommand(RunnerSpec runner)

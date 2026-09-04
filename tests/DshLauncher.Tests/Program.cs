@@ -59,6 +59,7 @@ await VerifyLocalPackageVersionAsync();
 await VerifyManagedHarnessResolutionAsync();
 await VerifyManagedRemovalPreservesUnknownFilesAsync();
 await VerifyStartRequestsAreCoalescedAsync();
+await VerifyStartupTimeoutAsync();
 await VerifyWebHealthChecksAsync();
 VerifyIconResource();
 VerifyStartupSplash();
@@ -633,6 +634,61 @@ static async Task VerifyStartRequestsAreCoalescedAsync()
     {
         throw new InvalidOperationException(
             $"Expected one start and one browser open, got {startCalls} starts and {browserCalls} opens.");
+    }
+}
+
+static async Task VerifyStartupTimeoutAsync()
+{
+    var testDirectory = Path.Combine(Path.GetTempPath(), $"dsh-launcher-timeout-{Guid.NewGuid():N}");
+    var previousUrl = Environment.GetEnvironmentVariable("DSH_WEB_URL");
+    var previousTimeout = Environment.GetEnvironmentVariable("DSH_START_TIMEOUT_SECONDS");
+    var previousLogDirectory = Environment.GetEnvironmentVariable("DSH_LOG_DIR");
+    Directory.CreateDirectory(testDirectory);
+    try
+    {
+        var fakeHarness = Path.Combine(testDirectory, "slow-dsh.cmd");
+        File.WriteAllText(
+            fakeHarness,
+            "@echo fake Harness still starting\r\n@ping -n 6 127.0.0.1 > nul\r\n");
+        Environment.SetEnvironmentVariable("DSH_WEB_URL", "http://127.0.0.1:1/");
+        Environment.SetEnvironmentVariable("DSH_START_TIMEOUT_SECONDS", "1");
+        Environment.SetEnvironmentVariable("DSH_LOG_DIR", Path.Combine(testDirectory, "logs"));
+
+        var config = LauncherConfig.Load();
+        using var logger = LauncherLogger.Create(config.LogDirectory);
+        using var supervisor = new ProcessSupervisor(
+            config,
+            logger,
+            _ => Task.FromResult(new RunnerSpec(
+                fakeHarness,
+                Array.Empty<string>(),
+                testDirectory,
+                "slow test runner")));
+
+        var result = await supervisor.StartAsync();
+        try
+        {
+            if (result.Ready || result.Exited ||
+                !result.Message.Contains("did not respond", StringComparison.Ordinal) ||
+                !result.Message.Contains("within 1 seconds", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException($"Startup timeout result was not actionable: {result}");
+            }
+        }
+        finally
+        {
+            await supervisor.StopAsync();
+        }
+    }
+    finally
+    {
+        Environment.SetEnvironmentVariable("DSH_WEB_URL", previousUrl);
+        Environment.SetEnvironmentVariable("DSH_START_TIMEOUT_SECONDS", previousTimeout);
+        Environment.SetEnvironmentVariable("DSH_LOG_DIR", previousLogDirectory);
+        if (Directory.Exists(testDirectory))
+        {
+            Directory.Delete(testDirectory, recursive: true);
+        }
     }
 }
 

@@ -221,6 +221,7 @@ npx @deepseek-ai/dsh web
 | --- | --- |
 | `dsh` 不是命令 | 重新打开终端，确认安装器已把安装目录加入用户 PATH。 |
 | 怀疑 CLI、profile、插件清单、重复运行时、端口或日志目录有问题 | 执行 `dsh doctor` 查看诊断结果；提交 Issue 时可附上 `dsh doctor --copy` 的脱敏报告。 |
+| 首次配置下载 Node.js 或 Harness 很久后没有打开 | 从托盘菜单打开“打开日志目录 / Open logs”或执行 `dsh logs`，检查 `winget`、npm 网络、权限确认或安全软件拦截。 |
 | 浏览器没有自动打开 | 执行 `dsh status`，检查端口；必要时设置 `DSH_WEB_URL`。 |
 | Harness 启动失败 | 执行 `dsh logs` 查看最新日志，确认 Node.js/npm 或 pnpm 可用。 |
 | 运行了错误的 CLI | 设置 `DEEPSEEK_HARNESS_DIR` 或 `DEEPSEEK_DSH_BIN`，并重新打开终端。 |

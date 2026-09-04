@@ -221,6 +221,7 @@ The launcher only probes and opens a local URL. It does not change Harness's bin
 | --- | --- |
 | `dsh` is not recognized | Reopen the terminal and confirm the installer added its directory to the user PATH. |
 | The CLI, profile, plugin manifest, duplicate runtime, port, or log directory is suspect | Run `dsh doctor`; attach the redacted output from `dsh doctor --copy` when opening an issue. |
+| First setup spends a long time downloading Node.js or Harness, then nothing opens | Open "Open logs" from the tray menu or run `dsh logs`, then check for `winget`, npm network, permission prompt, or security software blocks. |
 | The browser does not open | Run `dsh status`, verify the port, and set `DSH_WEB_URL` when needed. |
 | Harness fails to start | Run `dsh logs` and confirm Node.js/npm or pnpm is available. |
 | The wrong CLI is selected | Set `DEEPSEEK_HARNESS_DIR` or `DEEPSEEK_DSH_BIN`, then reopen the terminal. |

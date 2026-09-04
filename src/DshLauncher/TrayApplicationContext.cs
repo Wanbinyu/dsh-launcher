@@ -676,7 +676,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
                 SetStatus("stopped");
                 if (showErrors)
                 {
-                    ShowError(result.Message);
+                    ShowError(BuildStartupExitedMessage(result));
                 }
             }
             else if (request.IsOwner && result.Ready)
@@ -685,7 +685,11 @@ internal sealed class TrayApplicationContext : ApplicationContext
             }
             else if (request.IsOwner)
             {
-                SetStatus("starting");
+                SetStatus("attention");
+                if (showErrors)
+                {
+                    ShowWarning(BuildStartupNotReadyMessage());
+                }
             }
 
             return result.Message;
@@ -709,12 +713,33 @@ internal sealed class TrayApplicationContext : ApplicationContext
                 SetStatus("error");
                 if (showErrors)
                 {
-                    ShowError($"启动 DeepSeek Harness 失败 / Could not start DeepSeek Harness:\n{exception.Message}");
+                    ShowError(BuildStartupExceptionMessage(exception));
                 }
             }
 
             return $"Could not start DeepSeek Harness: {exception.Message}";
         }
+    }
+
+    private string BuildStartupExitedMessage(StartResult result)
+    {
+        return $"{result.Message}\n\n" +
+               $"日志 / Log: {_logger.FilePath}";
+    }
+
+    private string BuildStartupNotReadyMessage()
+    {
+        return "DeepSeek Harness 还没有打开 / Harness is not ready yet.\n\n" +
+               $"启动器已经等待 {_config.StartupTimeout.TotalSeconds:0} 秒，但 {_config.WebUrl} 还没有响应。\n" +
+               "如果这是首次配置，Node.js、npm 或 Harness 可能仍在下载或启动，也可能被网络、权限确认或安全软件卡住。\n\n" +
+               "请从托盘菜单打开“打开日志目录 / Open logs”或“复制诊断报告 / Copy diagnostics”。\n" +
+               $"日志 / Log: {_logger.FilePath}";
+    }
+
+    private string BuildStartupExceptionMessage(Exception exception)
+    {
+        return $"启动 DeepSeek Harness 失败 / Could not start DeepSeek Harness:\n{exception.Message}\n\n" +
+               $"日志 / Log: {_logger.FilePath}";
     }
 
     private async Task RestartAsync()
@@ -964,6 +989,11 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private void ShowError(string message)
     {
         MessageBox.Show(message, "dsh-launcher", MessageBoxButtons.OK, MessageBoxIcon.Error);
+    }
+
+    private void ShowWarning(string message)
+    {
+        MessageBox.Show(message, "dsh-launcher", MessageBoxButtons.OK, MessageBoxIcon.Warning);
     }
 
     private async void ExitApplication()
