@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 
 namespace DshLauncher;
 
@@ -6,7 +7,8 @@ internal sealed record StartResult(
     bool Ready,
     bool Exited,
     int? ExitCode,
-    string Message);
+    string Message,
+    Uri? LaunchUrl = null);
 
 internal sealed record ProcessStatus(
     bool Running,
@@ -17,6 +19,14 @@ internal sealed record ProcessStatus(
 
 internal sealed class ProcessSupervisor : IDisposable
 {
+    private static readonly Regex DshWebLaunchUrlPattern = new(
+        @"^\s*dsh web:\s+(?<url>https?://[^\s)]+)",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static readonly Regex LaunchTokenPattern = new(
+        @"([?&]token=)[^&\s)]+",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
     private readonly LauncherConfig _config;
     private readonly LauncherLogger _logger;
     private readonly Func<CancellationToken, Task<RunnerSpec>> _resolveRunner;
@@ -24,6 +34,7 @@ internal sealed class ProcessSupervisor : IDisposable
     private readonly object _sync = new();
     private Process? _process;
     private RunnerSpec? _runner;
+    private Uri? _launchUrl;
     private int? _lastExitCode;
     private bool _disposed;
 
@@ -67,7 +78,20 @@ internal sealed class ProcessSupervisor : IDisposable
                     Message: $"The configured web URL is already responding{status}. Reusing the existing service.");
             }
 
+            if (existingWeb.RequiresAuthentication)
+            {
+                _logger.Info("Web URL already responds with HTTP 401 and requires a Harness launch token; leaving it unmanaged.");
+                return new StartResult(
+                    Ready: false,
+                    Exited: false,
+                    ExitCode: null,
+                    Message:
+                        $"The configured web URL responded with HTTP 401 at {_config.WebUrl}, but the launcher has no authenticated dsh web URL for that existing service. " +
+                        "Close the existing Harness process or reopen the URL printed by dsh web.");
+            }
+
             _lastExitCode = null;
+            SetLaunchUrl(null);
             var runner = await _resolveRunner(cancellationToken).ConfigureAwait(true);
             _logger.Info($"Starting {runner.Description}.");
 
@@ -205,7 +229,8 @@ internal sealed class ProcessSupervisor : IDisposable
         {
             while (await reader.ReadLineAsync().ConfigureAwait(false) is { } line)
             {
-                _logger.WriteProcessOutput(streamName, line);
+                CaptureLaunchUrl(line, streamName);
+                _logger.WriteProcessOutput(streamName, RedactLaunchTokens(line));
             }
         }
         catch (ObjectDisposedException)
@@ -215,6 +240,24 @@ internal sealed class ProcessSupervisor : IDisposable
         {
             _logger.Error($"Could not read Harness {streamName}", exception);
         }
+    }
+
+    private void CaptureLaunchUrl(string line, string streamName)
+    {
+        var launchUrl = TryParseDshWebLaunchUrl(line);
+        if (launchUrl is null)
+        {
+            return;
+        }
+
+        if (!IsConfiguredWebEndpoint(launchUrl))
+        {
+            _logger.Info($"Ignored Harness launch URL from {streamName} because it does not match the configured web endpoint.");
+            return;
+        }
+
+        SetLaunchUrl(launchUrl);
+        _logger.Info($"Captured authenticated Harness launch URL from {streamName}.");
     }
 
     private void HandleProcessExited(object? sender, EventArgs args)
@@ -281,6 +324,7 @@ internal sealed class ProcessSupervisor : IDisposable
     private async Task<StartResult> WaitForWebAsync(Process process, CancellationToken cancellationToken)
     {
         var deadline = DateTimeOffset.UtcNow + _config.StartupTimeout;
+        var sawAuthenticationRequired = false;
         while (DateTimeOffset.UtcNow < deadline)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -293,6 +337,7 @@ internal sealed class ProcessSupervisor : IDisposable
                     Message: $"DeepSeek Harness exited before the web server became ready (exit code {exitCode}).");
             }
 
+            var launchUrl = GetLaunchUrl();
             var webProbe = await WebHealthChecker.ProbeAsync(
                 _config.WebUrl,
                 TimeSpan.FromMilliseconds(500),
@@ -301,10 +346,42 @@ internal sealed class ProcessSupervisor : IDisposable
             {
                 var status = webProbe.StatusCode.HasValue ? $" (HTTP {webProbe.StatusCode.Value})" : string.Empty;
                 _logger.Info($"Web server is ready at {_config.WebUrl}{status}.");
-                return new StartResult(true, false, null, $"DeepSeek Harness is ready at {_config.WebUrl}.");
+                return new StartResult(
+                    Ready: true,
+                    Exited: false,
+                    ExitCode: null,
+                    Message: $"DeepSeek Harness is ready at {_config.WebUrl}.",
+                    LaunchUrl: launchUrl);
+            }
+
+            if (webProbe.RequiresAuthentication)
+            {
+                sawAuthenticationRequired = true;
+                if (launchUrl is not null)
+                {
+                    _logger.Info($"Web server is ready at {_config.WebUrl} (HTTP 401, authentication required).");
+                    return new StartResult(
+                        Ready: true,
+                        Exited: false,
+                        ExitCode: null,
+                        Message: $"DeepSeek Harness is ready at {_config.WebUrl}; browser authentication is required.",
+                        LaunchUrl: launchUrl);
+                }
             }
 
             await Task.Delay(250, cancellationToken).ConfigureAwait(true);
+        }
+
+        if (sawAuthenticationRequired)
+        {
+            _logger.Info($"Harness requires authentication at {_config.WebUrl}, but no authenticated launch URL was captured within {_config.StartupTimeout.TotalSeconds:0} seconds.");
+            return new StartResult(
+                Ready: false,
+                Exited: false,
+                ExitCode: null,
+                Message:
+                    $"DeepSeek Harness responded with HTTP 401 at {_config.WebUrl}, but the launcher did not capture the authenticated dsh web URL within {_config.StartupTimeout.TotalSeconds:0} seconds. " +
+                    "Open the logs and look for startup output from dsh web.");
         }
 
         _logger.Info($"Harness is still starting; {_config.WebUrl} did not respond within {_config.StartupTimeout.TotalSeconds:0} seconds.");
@@ -315,6 +392,77 @@ internal sealed class ProcessSupervisor : IDisposable
             Message:
                 $"DeepSeek Harness did not respond at {_config.WebUrl} within {_config.StartupTimeout.TotalSeconds:0} seconds. " +
                 "It may still be starting in the background.");
+    }
+
+    private Uri? GetLaunchUrl()
+    {
+        lock (_sync)
+        {
+            return _launchUrl;
+        }
+    }
+
+    private void SetLaunchUrl(Uri? launchUrl)
+    {
+        lock (_sync)
+        {
+            _launchUrl = launchUrl;
+        }
+    }
+
+    private bool IsConfiguredWebEndpoint(Uri launchUrl)
+    {
+        if (!string.Equals(launchUrl.Scheme, _config.WebUrl.Scheme, StringComparison.OrdinalIgnoreCase) ||
+            launchUrl.Port != _config.WebUrl.Port)
+        {
+            return false;
+        }
+
+        return string.Equals(launchUrl.Host, _config.WebUrl.Host, StringComparison.OrdinalIgnoreCase) ||
+               (launchUrl.IsLoopback && _config.WebUrl.IsLoopback);
+    }
+
+    internal static Uri? TryParseDshWebLaunchUrl(string line)
+    {
+        var match = DshWebLaunchUrlPattern.Match(line);
+        if (!match.Success)
+        {
+            return null;
+        }
+
+        var candidate = match.Groups["url"].Value;
+        if (!Uri.TryCreate(candidate, UriKind.Absolute, out var launchUrl) ||
+            (launchUrl.Scheme != Uri.UriSchemeHttp && launchUrl.Scheme != Uri.UriSchemeHttps) ||
+            !HasTokenQuery(launchUrl))
+        {
+            return null;
+        }
+
+        return launchUrl;
+    }
+
+    internal static string RedactLaunchTokens(string line) =>
+        LaunchTokenPattern.Replace(line, "$1<redacted>");
+
+    private static bool HasTokenQuery(Uri launchUrl)
+    {
+        var query = launchUrl.Query;
+        if (query.Length <= 1)
+        {
+            return false;
+        }
+
+        foreach (var part in query[1..].Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var separator = part.IndexOf('=');
+            var name = separator >= 0 ? part[..separator] : part;
+            if (string.Equals(Uri.UnescapeDataString(name), "token", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     internal static RunnerSpec AddWebCommand(RunnerSpec runner)

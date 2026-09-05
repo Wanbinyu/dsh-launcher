@@ -31,7 +31,7 @@ Visit **[Wanbinyu DSH Toolbox](https://wanbinyu.github.io/wanbinyu-harness-toolb
 
 | Platform | Version | Role |
 | --- | --- | --- |
-| Windows | `0.5.0` | Primary edition; installs, starts, and manages Harness with a local Plugin & Skills guide. |
+| Windows | `0.5.1` | Primary edition; installs, starts, and manages Harness with a local Plugin & Skills guide. |
 | Android | `0.1.2` | Experimental LAN client; connects to Windows but cannot guarantee complete remote Web functionality. |
 
 The Android edition requires Android 10 or newer and must be tested only on a trusted private network. Harness LAN mode currently has no authentication and plain-HTTP remote access has known limitations. See the [Android setup and security guide](android/README.en.md).

@@ -5,11 +5,11 @@ internal readonly record struct StartRequest(Task<StartResult> Completion, bool 
 internal sealed class StartCoordinator
 {
     private readonly Func<Task<StartResult>> _start;
-    private readonly Action _openBrowser;
+    private readonly Action<Uri?> _openBrowser;
     private Task<StartResult>? _activeOperation;
     private bool _openRequested;
 
-    public StartCoordinator(Func<Task<StartResult>> start, Action openBrowser)
+    public StartCoordinator(Func<Task<StartResult>> start, Action<Uri?> openBrowser)
     {
         _start = start;
         _openBrowser = openBrowser;
@@ -33,7 +33,7 @@ internal sealed class StartCoordinator
         var result = await _start();
         if (result.Ready && _openRequested)
         {
-            _openBrowser();
+            _openBrowser(result.LaunchUrl);
         }
 
         return result;

@@ -21,6 +21,8 @@ $doctorReport = Join-Path $env:TEMP "dsh-launcher-doctor-$PID.json"
 $resolverReport = Join-Path $env:TEMP "dsh-launcher-resolver-$PID.json"
 $doctorCommand = Join-Path $root 'src\DshLauncher\bin\Release\net8.0-windows\dsh.cmd'
 $resolverTestDirectory = Join-Path $env:TEMP "dsh-launcher-resolver-$PID"
+$project = [xml](Get-Content -LiteralPath (Join-Path $root 'src\DshLauncher\DshLauncher.csproj') -Raw)
+$expectedVersion = [string]$project.Project.PropertyGroup.Version
 
 function Invoke-LauncherForTest {
     param([string[]]$TestArguments)
@@ -61,7 +63,7 @@ try {
 
         & $doctorCommand doctor --json --report $doctorReport 2>&1 | Out-Null
         $savedJson = Get-Content -LiteralPath $doctorReport -Raw | ConvertFrom-Json
-        if ($savedJson.launcherVersion -ne '0.5.0') {
+        if ($savedJson.launcherVersion -ne $expectedVersion) {
             throw 'doctor did not save the expected JSON report'
         }
         if (@($savedJson.checks.id) -notcontains 'bundle-manifests') {

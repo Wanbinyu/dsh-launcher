@@ -59,6 +59,8 @@ await VerifyLocalPackageVersionAsync();
 await VerifyManagedHarnessResolutionAsync();
 await VerifyManagedRemovalPreservesUnknownFilesAsync();
 await VerifyStartRequestsAreCoalescedAsync();
+VerifyDshWebLaunchUrlParsing();
+await VerifyAuthenticatedWebLaunchAsync();
 await VerifyStartupTimeoutAsync();
 await VerifyWebHealthChecksAsync();
 VerifyIconResource();
@@ -537,19 +539,23 @@ static IEnumerable<System.Windows.Forms.Control> Descendants(System.Windows.Form
 
 static async Task VerifyWebHealthChecksAsync()
 {
-    foreach (var (statusCode, expectedResponding) in new[]
+    foreach (var (statusCode, expectedResponding, expectedRequiresAuthentication) in new[]
     {
-        (200, true),
-        (302, true),
-        (404, false),
-        (500, false),
+        (200, true, false),
+        (302, true, false),
+        (401, false, true),
+        (404, false, false),
+        (500, false, false),
     })
     {
         var result = await ProbeStatusAsync(statusCode);
-        if (result.Responding != expectedResponding || result.StatusCode != statusCode)
+        if (result.Responding != expectedResponding ||
+            result.RequiresAuthentication != expectedRequiresAuthentication ||
+            result.StatusCode != statusCode)
         {
             throw new InvalidOperationException(
-                $"HTTP {statusCode} readiness was {result.Responding}; expected {expectedResponding}.");
+                $"HTTP {statusCode} readiness was {result.Responding}/{result.RequiresAuthentication}; " +
+                $"expected {expectedResponding}/{expectedRequiresAuthentication}.");
         }
     }
 }
@@ -584,6 +590,49 @@ static async Task<WebHealthChecker.ProbeResult> ProbeStatusAsync(int statusCode)
     }
 }
 
+static int ReserveLoopbackPort()
+{
+    var listener = new TcpListener(IPAddress.Loopback, 0);
+    listener.Start();
+    try
+    {
+        return ((IPEndPoint)listener.LocalEndpoint).Port;
+    }
+    finally
+    {
+        listener.Stop();
+    }
+}
+
+static async Task ServeHttpStatusAfterDelayAsync(
+    int port,
+    int statusCode,
+    TimeSpan startDelay,
+    CancellationToken cancellationToken)
+{
+    await Task.Delay(startDelay, cancellationToken);
+    var listener = new TcpListener(IPAddress.Loopback, port);
+    listener.Start();
+    try
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            using var client = await listener.AcceptTcpClientAsync(cancellationToken);
+            await using var stream = client.GetStream();
+            var request = new byte[4096];
+            _ = await stream.ReadAsync(request, cancellationToken);
+            var response = Encoding.ASCII.GetBytes(
+                $"HTTP/1.1 {statusCode} Test\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+            await stream.WriteAsync(response, cancellationToken);
+            await stream.FlushAsync(cancellationToken);
+        }
+    }
+    finally
+    {
+        listener.Stop();
+    }
+}
+
 static void VerifyIconResource()
 {
     using var stream = typeof(ProcessSupervisor).Assembly.GetManifestResourceStream(
@@ -608,13 +657,18 @@ static async Task VerifyStartRequestsAreCoalescedAsync()
     var startCompletion = new TaskCompletionSource<StartResult>(TaskCreationOptions.RunContinuationsAsynchronously);
     var startCalls = 0;
     var browserCalls = 0;
+    Uri? openedUrl = null;
     var coordinator = new StartCoordinator(
         () =>
         {
             startCalls++;
             return startCompletion.Task;
         },
-        () => browserCalls++);
+        launchUrl =>
+        {
+            browserCalls++;
+            openedUrl = launchUrl;
+        });
 
     var automaticStart = coordinator.Request(openBrowser: false);
     var trayOpen = coordinator.Request(openBrowser: true);
@@ -624,17 +678,129 @@ static async Task VerifyStartRequestsAreCoalescedAsync()
         throw new InvalidOperationException("Concurrent start requests were not coalesced.");
     }
 
+    var launchUrl = new Uri("http://127.0.0.1:3080/?token=test-token");
     startCompletion.SetResult(new StartResult(
         Ready: true,
         Exited: false,
         ExitCode: null,
-        Message: "ready"));
+        Message: "ready",
+        LaunchUrl: launchUrl));
     await Task.WhenAll(automaticStart.Completion, trayOpen.Completion);
-    if (startCalls != 1 || browserCalls != 1)
+    if (startCalls != 1 || browserCalls != 1 || openedUrl != launchUrl)
     {
         throw new InvalidOperationException(
-            $"Expected one start and one browser open, got {startCalls} starts and {browserCalls} opens.");
+            $"Expected one start and one browser open with the launch URL, got {startCalls} starts and {browserCalls} opens.");
     }
+}
+
+static void VerifyDshWebLaunchUrlParsing()
+{
+    const string line =
+        "dsh web: http://127.0.0.1:3080/?token=secret-token (LAN: http://192.168.1.10:3080/?token=secret-token)";
+    var launchUrl = ProcessSupervisor.TryParseDshWebLaunchUrl(line);
+    if (launchUrl?.AbsoluteUri != "http://127.0.0.1:3080/?token=secret-token")
+    {
+        throw new InvalidOperationException($"The dsh web launch URL was not parsed correctly: {launchUrl}");
+    }
+
+    var redacted = ProcessSupervisor.RedactLaunchTokens(line);
+    if (redacted.Contains("secret-token", StringComparison.Ordinal) ||
+        !redacted.Contains("?token=<redacted>", StringComparison.Ordinal))
+    {
+        throw new InvalidOperationException($"The dsh web launch URL was not redacted correctly: {redacted}");
+    }
+
+    if (ProcessSupervisor.TryParseDshWebLaunchUrl("dsh web: opening the default browser") is not null ||
+        ProcessSupervisor.TryParseDshWebLaunchUrl("dsh web: http://127.0.0.1:3080/") is not null)
+    {
+        throw new InvalidOperationException("A non-authenticated dsh web line was accepted as a launch URL.");
+    }
+}
+
+static async Task VerifyAuthenticatedWebLaunchAsync()
+{
+    var testDirectory = Path.Combine(Path.GetTempPath(), $"dsh-launcher-auth-{Guid.NewGuid():N}");
+    var previousUrl = Environment.GetEnvironmentVariable("DSH_WEB_URL");
+    var previousTimeout = Environment.GetEnvironmentVariable("DSH_START_TIMEOUT_SECONDS");
+    var previousLogDirectory = Environment.GetEnvironmentVariable("DSH_LOG_DIR");
+    var port = ReserveLoopbackPort();
+    using var listenerCancellation = new CancellationTokenSource();
+    Directory.CreateDirectory(testDirectory);
+    try
+    {
+        var listener = ServeHttpStatusAfterDelayAsync(
+            port,
+            statusCode: 401,
+            startDelay: TimeSpan.FromMilliseconds(1500),
+            listenerCancellation.Token);
+        var fakeHarness = Path.Combine(testDirectory, "auth-dsh.cmd");
+        File.WriteAllText(
+            fakeHarness,
+            $"@echo dsh web: http://127.0.0.1:{port}/?token=test-token\r\n" +
+            "@ping -n 8 127.0.0.1 > nul\r\n");
+        Environment.SetEnvironmentVariable("DSH_WEB_URL", $"http://127.0.0.1:{port}/");
+        Environment.SetEnvironmentVariable("DSH_START_TIMEOUT_SECONDS", "5");
+        Environment.SetEnvironmentVariable("DSH_LOG_DIR", Path.Combine(testDirectory, "logs"));
+
+        var config = LauncherConfig.Load();
+        using var logger = LauncherLogger.Create(config.LogDirectory);
+        using var supervisor = new ProcessSupervisor(
+            config,
+            logger,
+            _ => Task.FromResult(new RunnerSpec(
+                fakeHarness,
+                Array.Empty<string>(),
+                testDirectory,
+                "auth test runner")));
+
+        var result = await supervisor.StartAsync();
+        try
+        {
+            if (!result.Ready ||
+                result.Exited ||
+                result.LaunchUrl?.AbsoluteUri != $"http://127.0.0.1:{port}/?token=test-token" ||
+                !result.Message.Contains("authentication is required", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException($"Authenticated startup result was not ready: {result}");
+            }
+
+            var log = await ReadSharedTextAsync(logger.FilePath);
+            if (log.Contains("test-token", StringComparison.Ordinal) ||
+                !log.Contains("?token=<redacted>", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("The authenticated launch token was not redacted in the log.");
+            }
+        }
+        finally
+        {
+            await supervisor.StopAsync();
+            await listenerCancellation.CancelAsync();
+            try
+            {
+                await listener;
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }
+    }
+    finally
+    {
+        Environment.SetEnvironmentVariable("DSH_WEB_URL", previousUrl);
+        Environment.SetEnvironmentVariable("DSH_START_TIMEOUT_SECONDS", previousTimeout);
+        Environment.SetEnvironmentVariable("DSH_LOG_DIR", previousLogDirectory);
+        if (Directory.Exists(testDirectory))
+        {
+            Directory.Delete(testDirectory, recursive: true);
+        }
+    }
+}
+
+static async Task<string> ReadSharedTextAsync(string path)
+{
+    await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+    using var reader = new StreamReader(stream, Encoding.UTF8);
+    return await reader.ReadToEndAsync();
 }
 
 static async Task VerifyStartupTimeoutAsync()

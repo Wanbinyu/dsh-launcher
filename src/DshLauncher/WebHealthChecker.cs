@@ -4,7 +4,10 @@ internal static class WebHealthChecker
 {
     private static readonly HttpClient Client = new();
 
-    public sealed record ProbeResult(bool Responding, int? StatusCode);
+    public sealed record ProbeResult(bool Responding, int? StatusCode)
+    {
+        public bool RequiresAuthentication => StatusCode == 401;
+    }
 
     public static async Task<ProbeResult> ProbeAsync(Uri url, TimeSpan timeout, CancellationToken cancellationToken = default)
     {

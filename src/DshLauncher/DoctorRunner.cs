@@ -313,6 +313,13 @@ internal sealed class DoctorRunner
                 return;
             }
 
+            if (probe.RequiresAuthentication)
+            {
+                Add("web-endpoint", DoctorStatus.Pass,
+                    $"HTTP {probe.StatusCode} authentication required at {SanitizeUri(_config.WebUrl)}");
+                return;
+            }
+
             var portOccupied = _config.WebUrl.IsLoopback && IPGlobalProperties.GetIPGlobalProperties()
                 .GetActiveTcpListeners()
                 .Any(endpoint => endpoint.Port == _config.WebUrl.Port);

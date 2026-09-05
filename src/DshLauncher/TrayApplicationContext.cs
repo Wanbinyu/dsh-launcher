@@ -688,7 +688,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
                 SetStatus("attention");
                 if (showErrors)
                 {
-                    ShowWarning(BuildStartupNotReadyMessage());
+                    ShowWarning(BuildStartupNotReadyMessage(result));
                 }
             }
 
@@ -727,10 +727,10 @@ internal sealed class TrayApplicationContext : ApplicationContext
                $"日志 / Log: {_logger.FilePath}";
     }
 
-    private string BuildStartupNotReadyMessage()
+    private string BuildStartupNotReadyMessage(StartResult result)
     {
         return "DeepSeek Harness 还没有打开 / Harness is not ready yet.\n\n" +
-               $"启动器已经等待 {_config.StartupTimeout.TotalSeconds:0} 秒，但 {_config.WebUrl} 还没有响应。\n" +
+               $"{result.Message}\n" +
                "如果这是首次配置，Node.js、npm 或 Harness 可能仍在下载或启动，也可能被网络、权限确认或安全软件卡住。\n\n" +
                "请从托盘菜单打开“打开日志目录 / Open logs”或“复制诊断报告 / Copy diagnostics”。\n" +
                $"日志 / Log: {_logger.FilePath}";
@@ -908,12 +908,13 @@ internal sealed class TrayApplicationContext : ApplicationContext
         return "DeepSeek Harness stopped.";
     }
 
-    private void OpenBrowser()
+    private void OpenBrowser(Uri? launchUrl = null)
     {
         try
         {
-            BrowserLauncher.Open(_config.WebUrl);
-            _logger.Info($"Opened web browser at {_config.WebUrl}.");
+            var targetUrl = launchUrl ?? _config.WebUrl;
+            BrowserLauncher.Open(targetUrl);
+            _logger.Info($"Opened web browser at {ProcessSupervisor.RedactLaunchTokens(targetUrl.AbsoluteUri)}.");
         }
         catch (Exception exception)
         {
