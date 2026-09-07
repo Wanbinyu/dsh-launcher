@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Text.RegularExpressions;
 
 namespace DshLauncher;
 
@@ -19,14 +18,6 @@ internal sealed record ProcessStatus(
 
 internal sealed class ProcessSupervisor : IDisposable
 {
-    private static readonly Regex DshWebLaunchUrlPattern = new(
-        @"^\s*dsh web:\s+(?<url>https?://[^\s)]+)",
-        RegexOptions.IgnoreCase | RegexOptions.Compiled);
-
-    private static readonly Regex LaunchTokenPattern = new(
-        @"([?&]token=)[^&\s)]+",
-        RegexOptions.IgnoreCase | RegexOptions.Compiled);
-
     private readonly LauncherConfig _config;
     private readonly LauncherLogger _logger;
     private readonly Func<CancellationToken, Task<RunnerSpec>> _resolveRunner;
@@ -230,7 +221,7 @@ internal sealed class ProcessSupervisor : IDisposable
             while (await reader.ReadLineAsync().ConfigureAwait(false) is { } line)
             {
                 CaptureLaunchUrl(line, streamName);
-                _logger.WriteProcessOutput(streamName, RedactLaunchTokens(line));
+                _logger.WriteProcessOutput(streamName, line);
             }
         }
         catch (ObjectDisposedException)
@@ -244,15 +235,9 @@ internal sealed class ProcessSupervisor : IDisposable
 
     private void CaptureLaunchUrl(string line, string streamName)
     {
-        var launchUrl = TryParseDshWebLaunchUrl(line);
+        var launchUrl = HarnessLaunchOutput.TryGetAuthenticatedUrl(line, _config.WebUrl);
         if (launchUrl is null)
         {
-            return;
-        }
-
-        if (!IsConfiguredWebEndpoint(launchUrl))
-        {
-            _logger.Info($"Ignored Harness launch URL from {streamName} because it does not match the configured web endpoint.");
             return;
         }
 
@@ -408,61 +393,6 @@ internal sealed class ProcessSupervisor : IDisposable
         {
             _launchUrl = launchUrl;
         }
-    }
-
-    private bool IsConfiguredWebEndpoint(Uri launchUrl)
-    {
-        if (!string.Equals(launchUrl.Scheme, _config.WebUrl.Scheme, StringComparison.OrdinalIgnoreCase) ||
-            launchUrl.Port != _config.WebUrl.Port)
-        {
-            return false;
-        }
-
-        return string.Equals(launchUrl.Host, _config.WebUrl.Host, StringComparison.OrdinalIgnoreCase) ||
-               (launchUrl.IsLoopback && _config.WebUrl.IsLoopback);
-    }
-
-    internal static Uri? TryParseDshWebLaunchUrl(string line)
-    {
-        var match = DshWebLaunchUrlPattern.Match(line);
-        if (!match.Success)
-        {
-            return null;
-        }
-
-        var candidate = match.Groups["url"].Value;
-        if (!Uri.TryCreate(candidate, UriKind.Absolute, out var launchUrl) ||
-            (launchUrl.Scheme != Uri.UriSchemeHttp && launchUrl.Scheme != Uri.UriSchemeHttps) ||
-            !HasTokenQuery(launchUrl))
-        {
-            return null;
-        }
-
-        return launchUrl;
-    }
-
-    internal static string RedactLaunchTokens(string line) =>
-        LaunchTokenPattern.Replace(line, "$1<redacted>");
-
-    private static bool HasTokenQuery(Uri launchUrl)
-    {
-        var query = launchUrl.Query;
-        if (query.Length <= 1)
-        {
-            return false;
-        }
-
-        foreach (var part in query[1..].Split('&', StringSplitOptions.RemoveEmptyEntries))
-        {
-            var separator = part.IndexOf('=');
-            var name = separator >= 0 ? part[..separator] : part;
-            if (string.Equals(Uri.UnescapeDataString(name), "token", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     internal static RunnerSpec AddWebCommand(RunnerSpec runner)

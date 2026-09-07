@@ -914,12 +914,12 @@ internal sealed class TrayApplicationContext : ApplicationContext
         {
             var targetUrl = launchUrl ?? _config.WebUrl;
             BrowserLauncher.Open(targetUrl);
-            _logger.Info($"Opened web browser at {ProcessSupervisor.RedactLaunchTokens(targetUrl.AbsoluteUri)}.");
+            _logger.Info($"Opened web browser at {HarnessLaunchOutput.RedactSecrets(targetUrl.AbsoluteUri)}.");
         }
         catch (Exception exception)
         {
             _logger.Error("Could not open the web browser", exception);
-            ShowError($"无法打开浏览器 / Could not open the browser:\n{exception.Message}");
+            ShowError($"无法打开浏览器 / Could not open the browser:\n{HarnessLaunchOutput.RedactSecrets(exception.Message)}");
         }
     }
 

@@ -45,7 +45,7 @@ internal sealed class LauncherLogger : IDisposable
                 return;
             }
 
-            _writer.WriteLine($"{DateTimeOffset.Now:O} [{level}] {message}");
+            _writer.WriteLine($"{DateTimeOffset.Now:O} [{level}] {HarnessLaunchOutput.RedactSecrets(message)}");
         }
     }
 

@@ -57,10 +57,11 @@ The Android edition requires Android 10 or newer and must be tested only on a tr
 - Provides both `dsh` and `deepseek` command entrypoints; a desktop shortcut can launch it directly.
 - Probes `127.0.0.1:3080` and opens the default browser when the server responds.
 - Detects the Harness version and passes `--no-open` to `rc.8` and newer releases so the CLI and launcher do not open duplicate tabs.
+- Supports the one-time Web login token introduced in Harness `0.1.2+`: the official authenticated URL is captured from background startup output and the token is kept only in process memory.
 - Coalesces repeated desktop, tray, and CLI requests, then opens the browser once after the shared startup is ready.
 - Uses one multi-size Windows icon across the EXE, tray, desktop shortcut, and installer.
 - Hides the Harness child process and kills the entire child tree on exit.
-- Writes Harness stdout and stderr to local logs for troubleshooting.
+- Writes Harness stdout and stderr to local logs for troubleshooting; Web login tokens and Bearer credentials are redacted before they are persisted.
 - Doctor checks the Harness CLI, Node.js, package managers, Web profile, bundle manifests, duplicate core runtimes, endpoint, port, and log directory.
 - Copies or saves a redacted diagnostic report that is practical to share in an issue.
 - Keeps the PowerShell and `.cmd` entrypoints as compatibility fallbacks when the EXE is not present.
@@ -154,6 +155,8 @@ The guide neither installs silently nor automates the Harness page. The copy but
 Installation detection reads no session or workspace files. It only runs the official plugin-list command and parses package names and versions. Because `.agents/skills` belongs to the active Harness workspace, the launcher neither guesses nor scans possible workspace paths; the generated request asks Harness to check whether each Skill already exists. Source health is opt-in and contacts only the public GitHub, raw GitHub, npm, or Release addresses listed by the catalog. It uploads no choices, records no telemetry, and does not treat a temporary network failure as proof that a project is dead.
 
 DeepSeek Harness `rc.8` and newer releases open the Web UI themselves. When the launcher supervises those versions in the background, it reads the installed package version and passes `--no-open`, then keeps ownership of readiness and opens one tab. `rc.7` keeps its original arguments.
+
+Harness `0.1.2+` prints an authenticated URL containing a one-time token during startup. The launcher treats that line as the official readiness signal and opens the complete URL only after confirming that it remains on the configured loopback origin and validating its scheme, host, and port. The token is never included in status text, diagnostics, or logs. Older Harness versions continue to use the existing HTTP readiness probe.
 
 When the configured web URL is already responding before startup, the launcher does not start a second Harness process. It reuses the existing service and opens the browser, which also avoids duplicating a process when the port is occupied by another service.
 

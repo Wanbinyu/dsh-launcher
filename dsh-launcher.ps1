@@ -142,6 +142,21 @@ function Test-SupportsNoOpen {
     return $Matches.pre -match '^rc\.(?<candidate>\d+)$' -and [int]$Matches.candidate -ge 8
 }
 
+function Test-UsesAuthenticatedWebUrl {
+    param([AllowNull()][string]$Version)
+
+    if ([string]::IsNullOrWhiteSpace($Version)) {
+        return $false
+    }
+
+    $normalized = $Version.Trim().TrimStart('v').Split('+')[0]
+    if ($normalized -notmatch '^(?<core>\d+\.\d+\.\d+)(?:-.+)?$') {
+        return $false
+    }
+
+    return [version]$Matches.core -ge [version]'0.1.2'
+}
+
 function Get-RunnerFromSource {
     $configuredDirectory = $env:DEEPSEEK_HARNESS_DIR
     if ([string]::IsNullOrWhiteSpace($configuredDirectory)) {
@@ -528,8 +543,14 @@ try {
     if ($effectiveArguments.Count -eq 0) {
         $effectiveArguments = @('web')
         $openBrowser = Test-AutoOpenEnabled
-        if ($openBrowser -and (Test-SupportsNoOpen -Version $runner.DshVersion)) {
-            $effectiveArguments += '--no-open'
+        if (Test-SupportsNoOpen -Version $runner.DshVersion) {
+            if ($openBrowser -and (Test-UsesAuthenticatedWebUrl -Version $runner.DshVersion)) {
+                # The legacy PowerShell fallback cannot safely retain the launch token.
+                # Let Harness open its own authenticated URL instead.
+                $openBrowser = $false
+            } else {
+                $effectiveArguments += '--no-open'
+            }
         }
     }
 

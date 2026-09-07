@@ -59,7 +59,8 @@ await VerifyLocalPackageVersionAsync();
 await VerifyManagedHarnessResolutionAsync();
 await VerifyManagedRemovalPreservesUnknownFilesAsync();
 await VerifyStartRequestsAreCoalescedAsync();
-VerifyDshWebLaunchUrlParsing();
+VerifyAuthenticatedLaunchUrlParsing();
+VerifyProcessOutputRedaction();
 await VerifyAuthenticatedWebLaunchAsync();
 await VerifyStartupTimeoutAsync();
 await VerifyWebHealthChecksAsync();
@@ -693,27 +694,77 @@ static async Task VerifyStartRequestsAreCoalescedAsync()
     }
 }
 
-static void VerifyDshWebLaunchUrlParsing()
+static void VerifyAuthenticatedLaunchUrlParsing()
 {
-    const string line =
-        "dsh web: http://127.0.0.1:3080/?token=secret-token (LAN: http://192.168.1.10:3080/?token=secret-token)";
-    var launchUrl = ProcessSupervisor.TryParseDshWebLaunchUrl(line);
-    if (launchUrl?.AbsoluteUri != "http://127.0.0.1:3080/?token=secret-token")
+    var expected = new Uri("http://127.0.0.1:3080/");
+    const string output =
+        "\u001b[32mdsh web:\u001b[0m http://127.0.0.1:3080/?token=local%2Fsecret " +
+        "(LAN: http://192.168.1.20:3080/?token=lan-secret)";
+    var parsed = HarnessLaunchOutput.TryGetAuthenticatedUrl(output, expected);
+    if (parsed?.AbsoluteUri != "http://127.0.0.1:3080/?token=local%2Fsecret")
     {
-        throw new InvalidOperationException($"The dsh web launch URL was not parsed correctly: {launchUrl}");
+        throw new InvalidOperationException("The authenticated Harness launch URL was not parsed correctly.");
     }
 
-    var redacted = ProcessSupervisor.RedactLaunchTokens(line);
-    if (redacted.Contains("secret-token", StringComparison.Ordinal) ||
-        !redacted.Contains("?token=<redacted>", StringComparison.Ordinal))
+    foreach (var rejected in new[]
     {
-        throw new InvalidOperationException($"The dsh web launch URL was not redacted correctly: {redacted}");
+        "dsh web: http://127.0.0.1:3080/",
+        "dsh web: http://127.0.0.1:3081/?token=wrong-port",
+        "dsh web: https://example.com/?token=external",
+        "unrelated output http://127.0.0.1:3080/?token=secret",
+    })
+    {
+        if (HarnessLaunchOutput.TryGetAuthenticatedUrl(rejected, expected) is not null)
+        {
+            throw new InvalidOperationException($"An untrusted launch URL was accepted: {rejected}");
+        }
     }
 
-    if (ProcessSupervisor.TryParseDshWebLaunchUrl("dsh web: opening the default browser") is not null ||
-        ProcessSupervisor.TryParseDshWebLaunchUrl("dsh web: http://127.0.0.1:3080/") is not null)
+    if (HarnessLaunchOutput.TryGetAuthenticatedUrl(
+            "dsh web: https://example.com/?token=external",
+            new Uri("https://example.com/")) is not null)
     {
-        throw new InvalidOperationException("A non-authenticated dsh web line was accepted as a launch URL.");
+        throw new InvalidOperationException("A non-loopback authenticated launch URL was accepted.");
+    }
+}
+
+static void VerifyProcessOutputRedaction()
+{
+    const string output =
+        "dsh web: http://127.0.0.1:3080/?token=local-secret " +
+        "(LAN: http://192.168.1.20:3080/?token=lan-secret) Authorization: Bearer bearer-secret";
+    var redacted = HarnessLaunchOutput.RedactSecrets(output);
+    if (redacted.Contains("local-secret", StringComparison.Ordinal) ||
+        redacted.Contains("lan-secret", StringComparison.Ordinal) ||
+        redacted.Contains("bearer-secret", StringComparison.Ordinal) ||
+        redacted.Count(character => character == '<') != 3)
+    {
+        throw new InvalidOperationException("Harness authentication secrets were not fully redacted.");
+    }
+
+    var testDirectory = Path.Combine(Path.GetTempPath(), $"dsh-launcher-log-tests-{Guid.NewGuid():N}");
+    Directory.CreateDirectory(testDirectory);
+    try
+    {
+        string logPath;
+        using (var logger = LauncherLogger.Create(testDirectory))
+        {
+            logPath = logger.FilePath;
+            logger.Info(output);
+        }
+
+        var log = File.ReadAllText(logPath);
+        if (log.Contains("local-secret", StringComparison.Ordinal) ||
+            log.Contains("lan-secret", StringComparison.Ordinal) ||
+            log.Contains("bearer-secret", StringComparison.Ordinal) ||
+            !log.Contains("token=<redacted>", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("Launcher logs retained a Harness authentication secret.");
+        }
+    }
+    finally
+    {
+        Directory.Delete(testDirectory, recursive: true);
     }
 }
 

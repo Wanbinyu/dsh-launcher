@@ -23,6 +23,7 @@ $doctorCommand = Join-Path $root 'src\DshLauncher\bin\Release\net8.0-windows\dsh
 $resolverTestDirectory = Join-Path $env:TEMP "dsh-launcher-resolver-$PID"
 $project = [xml](Get-Content -LiteralPath (Join-Path $root 'src\DshLauncher\DshLauncher.csproj') -Raw)
 $expectedVersion = [string]$project.Project.PropertyGroup.Version
+$authTestDirectory = Join-Path $env:TEMP "dsh-launcher-auth-fallback-$PID"
 
 function Invoke-LauncherForTest {
     param([string[]]$TestArguments)
@@ -49,6 +50,30 @@ try {
     if ($passthroughOutput -notmatch 'FAKE_DSH_ARGS:--profile tui --resume demo') {
         throw "explicit arguments were not passed through unchanged: $passthroughOutput"
     }
+
+    $authPackageDirectory = Join-Path $authTestDirectory 'node_modules\@deepseek-ai\dsh'
+    $authEntry = Join-Path $authPackageDirectory 'lib\bin.js'
+    New-Item -ItemType Directory -Force -Path (Split-Path -Path $authEntry -Parent) | Out-Null
+    Set-Content -LiteralPath (Join-Path $authPackageDirectory 'package.json') `
+        -Value '{"name":"@deepseek-ai/dsh","version":"0.1.2-rc.1"}' -Encoding utf8
+    Set-Content -LiteralPath $authEntry `
+        -Value "console.log('AUTH_FAKE_ARGS:' + process.argv.slice(2).join(' '))" -Encoding utf8
+    $env:DEEPSEEK_DSH_BIN = $authEntry
+    $env:DSH_AUTO_OPEN = '1'
+    $authenticatedOutput = Invoke-LauncherForTest -TestArguments @()
+    if ($authenticatedOutput -notmatch 'AUTH_FAKE_ARGS:web(?:\r?\n|$)' -or
+        $authenticatedOutput -match '--no-open') {
+        throw "PowerShell fallback prevented Harness 0.1.2 from opening its authenticated URL: $authenticatedOutput"
+    }
+
+    $env:DSH_AUTO_OPEN = '0'
+    $noOpenOutput = Invoke-LauncherForTest -TestArguments @()
+    if ($noOpenOutput -notmatch 'AUTH_FAKE_ARGS:web --no-open') {
+        throw "PowerShell fallback ignored DSH_AUTO_OPEN=0 for Harness 0.1.2: $noOpenOutput"
+    }
+
+    $env:DEEPSEEK_DSH_BIN = $fake
+    $env:DSH_AUTO_OPEN = '0'
 
     $doctorExecutable = Join-Path $root 'src\DshLauncher\bin\Release\net8.0-windows\dsh-launcher.exe'
     if (Test-Path -LiteralPath $doctorExecutable) {
@@ -97,6 +122,7 @@ try {
     Remove-Item -LiteralPath $resolverReport -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $doctorCommand -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $resolverTestDirectory -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $authTestDirectory -Recurse -Force -ErrorAction SilentlyContinue
     $env:PATH = $previousPath
     if ($null -eq $previousBinary) {
         Remove-Item Env:DEEPSEEK_DSH_BIN -ErrorAction SilentlyContinue
