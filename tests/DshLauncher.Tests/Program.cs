@@ -209,6 +209,31 @@ static void VerifyRecommendationCatalog()
         throw new InvalidOperationException("A normal workflow should recommend only three to six items.");
     }
 
+    foreach (var plugin in catalog.Plugins)
+    {
+        if (HarnessCompatibility.IsVerified(plugin, null) ||
+            HarnessCompatibility.IsVerified(plugin, "0.1.5-rc.2") ||
+            HarnessCompatibility.IsVerified(plugin, "0.1.5-rc.1") ||
+            !HarnessCompatibility.IsVerified(plugin, "v0.1.1-rc.2+build"))
+            throw new InvalidOperationException("Released plugin host compatibility gate failed.");
+    }
+
+    foreach (var versions in new string[]?[] { null, [], ["latest"] })
+    {
+        var invalid = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            schemaVersion = 2,
+            profiles = catalog.Profiles,
+            items = catalog.Items.Select(item => item.IsSkill ? item : item with { VerifiedHarnessVersions = versions }),
+        });
+        try
+        {
+            PluginRecommendationCatalog.Parse(invalid);
+            throw new InvalidOperationException("Missing or malformed host verification was accepted.");
+        }
+        catch (InvalidDataException) { }
+    }
+
     var installationRequest = PluginRecommendationForm.BuildInstallationRequest(new[]
     {
         catalog.Skills[0],
@@ -261,14 +286,14 @@ static void VerifyRecommendationWindow()
         selectedProfile != "office" ||
         openHarnessInvoked ||
         form.VisibleItemCount != 6 ||
-        form.CheckedItemCount != 6 ||
+        form.CheckedItemCount != 3 ||
         controls.OfType<System.Windows.Forms.ComboBox>()
             .SingleOrDefault(combo => combo.AccessibleName == "使用方向 / Workflow")?.Items.Count != 10 ||
         !form.SelectedItemDetails.Contains(catalog.ForProfile("office")[0].DescriptionZh, StringComparison.Ordinal) ||
         !form.SelectedItemDetails.Contains(catalog.ForProfile("office")[0].DescriptionEn, StringComparison.Ordinal) ||
         !form.InstallationRequestPreview.Contains("请帮我安装", StringComparison.Ordinal) ||
         !form.InstallationRequestPreview.Contains("npx -y skills add", StringComparison.Ordinal) ||
-        !form.InstallationRequestPreview.Contains("dsh plugin --profile web add", StringComparison.Ordinal) ||
+        form.InstallationRequestPreview.Contains("命令：dsh plugin --profile web add", StringComparison.Ordinal) ||
         !controls.OfType<System.Windows.Forms.Label>().Any(label =>
             label.Text.Contains("不会读取会话、文件或密钥", StringComparison.Ordinal)) ||
         !controls.OfType<System.Windows.Forms.Button>().Any(button =>
@@ -299,6 +324,19 @@ static void VerifyRecommendationWindow()
 
     form.SetLicenseFilterForTest("all");
     var automation = catalog.Items.Single(item => item.Id == "dsh-automation");
+    form.ApplyInstallStatusesForTest(catalog.Plugins.ToDictionary(item => item.Id,
+        _ => new RecommendationInstallStatus(RecommendationInstallState.NotInstalled)));
+    var list = controls.OfType<System.Windows.Forms.ListView>().Single();
+    _ = list.Handle; // ItemChecked is dispatched by the native ListView handle.
+    foreach (System.Windows.Forms.ListViewItem entry in list.Items) entry.Checked = true;
+    if (!form.InstallationRequestPreview.Contains(automation.InstallCommand, StringComparison.Ordinal))
+        throw new InvalidOperationException("A verified plugin could not be selected.");
+    form.ApplyInstallStatusesForTest(catalog.Plugins.ToDictionary(item => item.Id,
+        _ => new RecommendationInstallStatus(RecommendationInstallState.Incompatible)));
+    foreach (System.Windows.Forms.ListViewItem entry in list.Items) entry.Checked = true;
+    if (form.InstallationRequestPreview.Contains("命令：dsh plugin", StringComparison.Ordinal) ||
+        form.CheckedItemCount != 3)
+        throw new InvalidOperationException("An incompatible plugin leaked into the installation request.");
     form.ApplyInstallStatusesForTest(new Dictionary<string, RecommendationInstallStatus>
     {
         [automation.Id] = new(
@@ -306,7 +344,7 @@ static void VerifyRecommendationWindow()
             automation.Version),
     });
     form.SetHideInstalledForTest(true);
-    if (form.VisibleItemCount != 5 || form.CheckedItemCount != 5 ||
+    if (form.VisibleItemCount != 5 || form.CheckedItemCount != 3 ||
         form.InstallationRequestPreview.Contains(automation.InstallCommand, StringComparison.Ordinal))
     {
         throw new InvalidOperationException("Installed plugins were not removed from the filtered request.");

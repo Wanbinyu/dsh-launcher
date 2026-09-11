@@ -9,6 +9,7 @@ internal enum RecommendationInstallState
     NotInstalled,
     InstalledCurrent,
     InstalledDifferent,
+    Incompatible,
 }
 
 internal sealed record RecommendationInstallStatus(
@@ -70,6 +71,15 @@ internal sealed class RecommendationInstallInspector
             var installed = ParseInstalledPackages(result.StandardOutput);
             foreach (var recommendation in recommendations.Where(item => !item.IsSkill))
             {
+                if (!HarnessCompatibility.IsVerified(recommendation, runner.DshVersion))
+                {
+                    statuses[recommendation.Id] = new RecommendationInstallStatus(
+                        RecommendationInstallState.Incompatible,
+                        installed.GetValueOrDefault(recommendation.PackageNameForInspection),
+                        $"Harness {runner.DshVersion ?? "unknown"}: this release is not verified. " +
+                        $"Verified versions: {string.Join(", ", recommendation.VerifiedHarnessVersions ?? [])}.");
+                    continue;
+                }
                 if (!installed.TryGetValue(recommendation.PackageNameForInspection, out var installedVersion))
                 {
                     statuses[recommendation.Id] = new RecommendationInstallStatus(

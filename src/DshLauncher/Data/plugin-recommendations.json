@@ -90,7 +90,14 @@
       "network": "安装访问 GitHub；任务联网取决于所用工具 / GitHub during install",
       "repositoryUrl": "https://github.com/anthropics/skills/tree/3b3fad96af16a10759d930941b4520ba0c40edae/skills/xlsx",
       "installCommand": "$env:DO_NOT_TRACK='1'; npx -y skills add https://github.com/anthropics/skills/tree/3b3fad96af16a10759d930941b4520ba0c40edae/skills/xlsx -a universal --copy -y",
-      "profiles": ["office", "data", "management", "public-service", "research", "complete"]
+      "profiles": [
+        "office",
+        "data",
+        "management",
+        "public-service",
+        "research",
+        "complete"
+      ]
     },
     {
       "id": "skill-docx",
@@ -109,7 +116,12 @@
       "network": "安装访问 GitHub；任务联网取决于所用工具 / GitHub during install",
       "repositoryUrl": "https://github.com/anthropics/skills/tree/3b3fad96af16a10759d930941b4520ba0c40edae/skills/docx",
       "installCommand": "$env:DO_NOT_TRACK='1'; npx -y skills add https://github.com/anthropics/skills/tree/3b3fad96af16a10759d930941b4520ba0c40edae/skills/docx -a universal --copy -y",
-      "profiles": ["office", "public-service", "research", "complete"]
+      "profiles": [
+        "office",
+        "public-service",
+        "research",
+        "complete"
+      ]
     },
     {
       "id": "skill-pdf",
@@ -128,7 +140,13 @@
       "network": "安装访问 GitHub；OCR 联网取决于用户选择 / GitHub during install",
       "repositoryUrl": "https://github.com/anthropics/skills/tree/3b3fad96af16a10759d930941b4520ba0c40edae/skills/pdf",
       "installCommand": "$env:DO_NOT_TRACK='1'; npx -y skills add https://github.com/anthropics/skills/tree/3b3fad96af16a10759d930941b4520ba0c40edae/skills/pdf -a universal --copy -y",
-      "profiles": ["office", "data", "public-service", "research", "complete"]
+      "profiles": [
+        "office",
+        "data",
+        "public-service",
+        "research",
+        "complete"
+      ]
     },
     {
       "id": "skill-pptx",
@@ -147,7 +165,11 @@
       "network": "安装访问 GitHub；任务联网取决于所用工具 / GitHub during install",
       "repositoryUrl": "https://github.com/anthropics/skills/tree/3b3fad96af16a10759d930941b4520ba0c40edae/skills/pptx",
       "installCommand": "$env:DO_NOT_TRACK='1'; npx -y skills add https://github.com/anthropics/skills/tree/3b3fad96af16a10759d930941b4520ba0c40edae/skills/pptx -a universal --copy -y",
-      "profiles": ["management", "design", "complete"]
+      "profiles": [
+        "management",
+        "design",
+        "complete"
+      ]
     },
     {
       "id": "skill-internal-comms",
@@ -166,7 +188,10 @@
       "network": "安装访问 GitHub；任务联网取决于模型配置 / GitHub during install",
       "repositoryUrl": "https://github.com/anthropics/skills/tree/3b3fad96af16a10759d930941b4520ba0c40edae/skills/internal-comms",
       "installCommand": "$env:DO_NOT_TRACK='1'; npx -y skills add https://github.com/anthropics/skills/tree/3b3fad96af16a10759d930941b4520ba0c40edae/skills/internal-comms -a universal --copy -y",
-      "profiles": ["management", "complete"]
+      "profiles": [
+        "management",
+        "complete"
+      ]
     },
     {
       "id": "skill-doc-coauthoring",
@@ -185,7 +210,12 @@
       "network": "安装访问 GitHub；任务联网取决于模型配置 / GitHub during install",
       "repositoryUrl": "https://github.com/anthropics/skills/tree/3b3fad96af16a10759d930941b4520ba0c40edae/skills/doc-coauthoring",
       "installCommand": "$env:DO_NOT_TRACK='1'; npx -y skills add https://github.com/anthropics/skills/tree/3b3fad96af16a10759d930941b4520ba0c40edae/skills/doc-coauthoring -a universal --copy -y",
-      "profiles": ["management", "public-service", "research", "complete"]
+      "profiles": [
+        "management",
+        "public-service",
+        "research",
+        "complete"
+      ]
     },
     {
       "id": "skill-canvas-design",
@@ -204,7 +234,10 @@
       "network": "安装访问 GitHub；生成联网取决于所用模型 / GitHub during install",
       "repositoryUrl": "https://github.com/anthropics/skills/tree/3b3fad96af16a10759d930941b4520ba0c40edae/skills/canvas-design",
       "installCommand": "$env:DO_NOT_TRACK='1'; npx -y skills add https://github.com/anthropics/skills/tree/3b3fad96af16a10759d930941b4520ba0c40edae/skills/canvas-design -a universal --copy -y",
-      "profiles": ["design", "complete"]
+      "profiles": [
+        "design",
+        "complete"
+      ]
     },
     {
       "id": "skill-theme-factory",
@@ -223,7 +256,11 @@
       "network": "安装访问 GitHub；任务联网取决于模型配置 / GitHub during install",
       "repositoryUrl": "https://github.com/anthropics/skills/tree/3b3fad96af16a10759d930941b4520ba0c40edae/skills/theme-factory",
       "installCommand": "$env:DO_NOT_TRACK='1'; npx -y skills add https://github.com/anthropics/skills/tree/3b3fad96af16a10759d930941b4520ba0c40edae/skills/theme-factory -a universal --copy -y",
-      "profiles": ["management", "design", "complete"]
+      "profiles": [
+        "management",
+        "design",
+        "complete"
+      ]
     },
     {
       "id": "dsh-automation",
@@ -236,13 +273,22 @@
       "descriptionEn": "Runs scheduled tasks in separate DSH sessions with Web and Agent management.",
       "reasonZh": "适合周期报表、重复办公和定时开发任务。",
       "reasonEn": "Useful for recurring reports, office routines, and scheduled development work.",
-      "compatibility": "DSH 0.1.1-rc.2 已核验 / verified",
+      "compatibility": "该发布包仅验证 / Release verified only: 0.1.1-rc.2; 0.1.5 暂停安装 / installation blocked",
       "requirements": "Node.js/npm；任务仍遵守 Harness 权限审批",
       "privacy": "计划与运行数据保存在本机 / schedules and run data stay local",
       "network": "安装访问 npm；任务联网取决于用户配置 / npm during install",
       "repositoryUrl": "https://github.com/MichengAI/dsh-automation",
       "installCommand": "dsh plugin --profile web add @michengai/dsh-automation@0.1.22 --registry=https://registry.npmjs.org/",
-      "profiles": ["office", "data", "software", "automation", "complete"]
+      "profiles": [
+        "office",
+        "data",
+        "software",
+        "automation",
+        "complete"
+      ],
+      "verifiedHarnessVersions": [
+        "0.1.1-rc.2"
+      ]
     },
     {
       "id": "dsh-voice-scribe",
@@ -255,13 +301,20 @@
       "descriptionEn": "Transcribes speech into the composer, with local offline SenseVoice by default.",
       "reasonZh": "适合会议记录、口述草稿和不方便键盘输入的场景。",
       "reasonEn": "Useful for meeting notes, dictated drafts, and hands-free input.",
-      "compatibility": "DSH 0.1.1-rc.2 已核验 / verified",
+      "compatibility": "该发布包仅验证 / Release verified only: 0.1.1-rc.2; 0.1.5 暂停安装 / installation blocked",
       "requirements": "麦克风；本地离线模型首次约下载 230 MB",
       "privacy": "默认本地识别；云端模式需用户主动选择 / local by default",
       "network": "安装访问 npm；本地模型首次下载 / npm and first model download",
       "repositoryUrl": "https://github.com/PensiveFei/dsh-voice-scribe",
       "installCommand": "dsh plugin --profile web add dsh-voice-scribe@0.4.1",
-      "profiles": ["office", "research", "complete"]
+      "profiles": [
+        "office",
+        "research",
+        "complete"
+      ],
+      "verifiedHarnessVersions": [
+        "0.1.1-rc.2"
+      ]
     },
     {
       "id": "dsh-secure-audit",
@@ -274,13 +327,21 @@
       "descriptionEn": "Provides read-only configuration audits, injection checks, and Chinese PII redaction.",
       "reasonZh": "适合敏感统计、行政材料和开发环境的安全检查。",
       "reasonEn": "Useful for sensitive statistics, administrative material, and development security.",
-      "compatibility": "DSH 0.1.1-rc.2 已核验 / verified",
+      "compatibility": "该发布包仅验证 / Release verified only: 0.1.1-rc.2; 0.1.5 暂停安装 / installation blocked",
       "requirements": "默认离线；模型分类器为可选功能",
       "privacy": "只读审计并输出脱敏结果 / read-only with redacted output",
       "network": "默认不联网；可选分类器取决于用户配置 / offline by default",
       "repositoryUrl": "https://github.com/PensiveFei/dsh-secure-audit",
       "installCommand": "dsh plugin --profile web add dsh-secure-audit@0.2.6",
-      "profiles": ["data", "public-service", "software", "complete"]
+      "profiles": [
+        "data",
+        "public-service",
+        "software",
+        "complete"
+      ],
+      "verifiedHarnessVersions": [
+        "0.1.1-rc.2"
+      ]
     },
     {
       "id": "dsh-thinking-levels",
@@ -293,13 +354,21 @@
       "descriptionEn": "Adjusts reasoning_effort by tool round with an optional manual lock.",
       "reasonZh": "简单任务减少等待和 Token，复杂任务保留更高推理强度。",
       "reasonEn": "Reduces time and tokens for simple work while preserving effort for hard tasks.",
-      "compatibility": "DSH 0.1.1-rc.2 已核验 / verified",
+      "compatibility": "该发布包仅验证 / Release verified only: 0.1.1-rc.2; 0.1.5 暂停安装 / installation blocked",
       "requirements": "所选模型和供应商需要支持 reasoning_effort",
       "privacy": "仅处理推理等级和耗时状态 / reasoning level and timing only",
       "network": "不新增网络请求 / no added network requests",
       "repositoryUrl": "https://github.com/drscrewdriver/dsh-thinking-levels",
       "installCommand": "dsh plugin --profile web add dsh-thinking-levels@0.6.0",
-      "profiles": ["software", "ai-cost", "automation", "complete"]
+      "profiles": [
+        "software",
+        "ai-cost",
+        "automation",
+        "complete"
+      ],
+      "verifiedHarnessVersions": [
+        "0.1.1-rc.2"
+      ]
     },
     {
       "id": "dsh-prompt-presets",
@@ -312,128 +381,182 @@
       "descriptionEn": "Manages a local prompt library and inserts presets into the composer draft.",
       "reasonZh": "适合复用公文、汇报、分析、创作和自动化指令。",
       "reasonEn": "Useful for reusable administrative, reporting, analysis, design, and automation prompts.",
-      "compatibility": "DSH 0.1.1-rc.2 已核验 / verified",
+      "compatibility": "该发布包仅验证 / Release verified only: 0.1.1-rc.2; 0.1.5 暂停安装 / installation blocked",
       "requirements": "无额外运行环境 / no extra runtime",
       "privacy": "提示词预设保存在本机 / presets stay local",
       "network": "不新增网络请求 / no added network requests",
       "repositoryUrl": "https://github.com/zhangdong456/dsh-prompt-presets",
       "installCommand": "dsh plugin --profile web add dsh-prompt-presets@1.0.4",
-      "profiles": ["office", "management", "public-service", "ai-cost", "design", "automation", "complete"]
+      "profiles": [
+        "office",
+        "management",
+        "public-service",
+        "ai-cost",
+        "design",
+        "automation",
+        "complete"
+      ],
+      "verifiedHarnessVersions": [
+        "0.1.1-rc.2"
+      ]
     },
     {
       "id": "dsh-billing",
       "kind": "plugin",
       "name": "dsh-billing",
-      "version": "0.6.3",
+      "version": "0.6.5",
       "publisher": "Wanbinyu",
       "license": "MIT",
       "descriptionZh": "按 provider/model 显示费用、Token、会话额度和输入区费用进度。",
       "descriptionEn": "Shows cost, tokens, session quota, and composer progress by provider and model.",
       "reasonZh": "看清每轮成本并及时发现未定价模型。",
       "reasonEn": "Reveals per-turn cost and unpriced models.",
-      "compatibility": "DSH 0.1.0-rc.6+；0.1.1-rc.2 已核验",
+      "compatibility": "该发布包仅验证 / Release verified only: 0.1.1-rc.2, 0.1.2-rc.1; 0.1.5 暂停安装 / installation blocked",
       "requirements": "无额外运行环境 / no extra runtime",
       "privacy": "本地只读统计 / local read-only accounting",
       "network": "不新增网络请求 / no added network requests",
       "repositoryUrl": "https://github.com/Wanbinyu/dsh-billing",
-      "installCommand": "dsh plugin --profile web add https://github.com/Wanbinyu/dsh-billing/releases/download/v0.6.3/dsh-billing-community-bundle-0.6.3.tgz",
-      "profiles": ["ai-cost", "complete"],
-      "installedPackageName": "dsh-billing-community-bundle"
+      "installCommand": "dsh plugin --profile web add https://github.com/Wanbinyu/dsh-billing/releases/download/v0.6.5/dsh-billing-community-bundle-0.6.5.tgz",
+      "profiles": [
+        "ai-cost",
+        "complete"
+      ],
+      "installedPackageName": "dsh-billing-community-bundle",
+      "verifiedHarnessVersions": [
+        "0.1.1-rc.2",
+        "0.1.2-rc.1"
+      ]
     },
     {
       "id": "dsh-plugin-git-inspect",
       "kind": "plugin",
       "name": "dsh-plugin-git-inspect",
-      "version": "0.3.2",
+      "version": "0.3.5",
       "publisher": "Wanbinyu",
       "license": "MIT",
       "descriptionZh": "给 Agent 提供只读 Git 状态、diff、历史、提交和 refs 工具。",
       "descriptionEn": "Provides read-only Git status, diff, history, commit, and refs tools.",
       "reasonZh": "理解工作区变化，但不提交、推送、切换分支或修改文件。",
       "reasonEn": "Understands workspace changes without commits, pushes, branch switches, or edits.",
-      "compatibility": "DSH 0.1.0-rc.5+；0.1.1-rc.2 已核验",
+      "compatibility": "该发布包仅验证 / Release verified only: 0.1.1-rc.2, 0.1.2-rc.1; 0.1.5 暂停安装 / installation blocked",
       "requirements": "Git；目标工作区必须是 Git 仓库",
       "privacy": "只读 Git 输出 / read-only Git output",
       "network": "不访问远程仓库 / no remote repository access",
       "repositoryUrl": "https://github.com/Wanbinyu/dsh-plugin-git-inspect",
-      "installCommand": "dsh plugin --profile web add https://github.com/Wanbinyu/dsh-plugin-git-inspect/releases/download/v0.3.2/dsh-plugin-git-inspect-0.3.2.tgz",
-      "profiles": ["software", "complete"]
+      "installCommand": "dsh plugin --profile web add https://github.com/Wanbinyu/dsh-plugin-git-inspect/releases/download/v0.3.5/dsh-plugin-git-inspect-0.3.5.tgz",
+      "profiles": [
+        "software",
+        "complete"
+      ],
+      "verifiedHarnessVersions": [
+        "0.1.1-rc.2",
+        "0.1.2-rc.1"
+      ]
     },
     {
       "id": "dsh-error-lens",
       "kind": "plugin",
       "name": "dsh-error-lens",
-      "version": "0.1.2",
+      "version": "0.1.6",
       "publisher": "Wanbinyu",
       "license": "MIT",
       "descriptionZh": "提供只读、脱敏的供应商错误分类和处理建议。",
       "descriptionEn": "Provides read-only, redacted provider failure categories and guidance.",
       "reasonZh": "把模糊失败整理成可执行的开发排查建议。",
       "reasonEn": "Turns vague failures into actionable development guidance.",
-      "compatibility": "DSH 0.1.0-rc.6+；0.1.1-rc.2 已核验",
+      "compatibility": "该发布包仅验证 / Release verified only: 0.1.1-rc.2, 0.1.2-rc.1; 0.1.5 暂停安装 / installation blocked",
       "requirements": "无额外运行环境 / no extra runtime",
       "privacy": "错误信息脱敏 / redacted diagnostics",
       "network": "不新增网络请求 / no added network requests",
       "repositoryUrl": "https://github.com/Wanbinyu/dsh-error-lens",
-      "installCommand": "dsh plugin --profile web add https://github.com/Wanbinyu/dsh-error-lens/releases/download/v0.1.2/dsh-error-lens-0.1.2.tgz",
-      "profiles": ["software", "complete"]
+      "installCommand": "dsh plugin --profile web add https://github.com/Wanbinyu/dsh-error-lens/releases/download/v0.1.6/dsh-error-lens-0.1.6.tgz",
+      "profiles": [
+        "software",
+        "complete"
+      ],
+      "verifiedHarnessVersions": [
+        "0.1.1-rc.2",
+        "0.1.2-rc.1"
+      ]
     },
     {
       "id": "dsh-provider-probe",
       "kind": "plugin",
       "name": "dsh-provider-probe",
-      "version": "0.3.2",
+      "version": "0.3.5",
       "publisher": "Wanbinyu",
       "license": "MIT",
       "descriptionZh": "由用户手动触发供应商连通性、延迟和能力检查。",
       "descriptionEn": "Runs explicit provider connectivity, latency, and capability checks.",
       "reasonZh": "安装或切换模型后快速判断接口与能力是否正常。",
       "reasonEn": "Checks connectivity and capabilities after adding or changing a model.",
-      "compatibility": "DSH 0.1.0-rc.6+；0.1.1-rc.2 已核验",
+      "compatibility": "该发布包仅验证 / Release verified only: 0.1.1-rc.2, 0.1.2-rc.1; 0.1.5 暂停安装 / installation blocked",
       "requirements": "至少配置一个可用供应商；只在用户手动检查时运行",
       "privacy": "不读取密钥值 / never reads secret values",
       "network": "仅手动检查所选供应商 / only explicit provider checks",
       "repositoryUrl": "https://github.com/Wanbinyu/dsh-provider-probe",
-      "installCommand": "dsh plugin --profile web add https://github.com/Wanbinyu/dsh-provider-probe/releases/download/v0.3.2/dsh-provider-probe-0.3.2.tgz",
-      "profiles": ["software", "ai-cost", "complete"]
+      "installCommand": "dsh plugin --profile web add https://github.com/Wanbinyu/dsh-provider-probe/releases/download/v0.3.5/dsh-provider-probe-0.3.5.tgz",
+      "profiles": [
+        "software",
+        "ai-cost",
+        "complete"
+      ],
+      "verifiedHarnessVersions": [
+        "0.1.1-rc.2",
+        "0.1.2-rc.1"
+      ]
     },
     {
       "id": "dsh-concurrency-meter",
       "kind": "plugin",
       "name": "dsh-concurrency-meter",
-      "version": "0.1.2",
+      "version": "0.1.5",
       "publisher": "Wanbinyu",
       "license": "MIT",
       "descriptionZh": "只读显示活动请求、峰值并发、结果和供应商分组。",
       "descriptionEn": "Shows active requests, peak concurrency, results, and provider groups read-only.",
       "reasonZh": "判断长任务是否仍在运行，以及是否接近并发或限流边界。",
       "reasonEn": "Shows whether long work is active and nearing concurrency or rate limits.",
-      "compatibility": "DSH 0.1.0-rc.6+；0.1.1-rc.2 已核验",
+      "compatibility": "该发布包仅验证 / Release verified only: 0.1.1-rc.2, 0.1.2-rc.1; 0.1.5 暂停安装 / installation blocked",
       "requirements": "无额外运行环境 / no extra runtime",
       "privacy": "仅状态与计数 / status and counts only",
       "network": "不新增网络请求 / no added network requests",
       "repositoryUrl": "https://github.com/Wanbinyu/dsh-concurrency-meter",
-      "installCommand": "dsh plugin --profile web add https://github.com/Wanbinyu/dsh-concurrency-meter/releases/download/v0.1.2/dsh-concurrency-meter-0.1.2.tgz",
-      "profiles": ["ai-cost", "automation", "complete"]
+      "installCommand": "dsh plugin --profile web add https://github.com/Wanbinyu/dsh-concurrency-meter/releases/download/v0.1.5/dsh-concurrency-meter-0.1.5.tgz",
+      "profiles": [
+        "ai-cost",
+        "automation",
+        "complete"
+      ],
+      "verifiedHarnessVersions": [
+        "0.1.1-rc.2",
+        "0.1.2-rc.1"
+      ]
     },
     {
       "id": "dsh-companion",
       "kind": "plugin",
       "name": "dsh-companion",
-      "version": "0.1.10",
+      "version": "0.1.11",
       "publisher": "Wanbinyu",
       "license": "MIT",
       "descriptionZh": "用蓝色鲸鱼男孩的动作和气泡显示任务状态。",
       "descriptionEn": "Shows task state through a blue whale-boy companion's motion and bubbles.",
       "reasonZh": "属于可选体验增强，因此只放在完整目录中，不默认推荐。",
       "reasonEn": "An optional experience enhancement, so it appears only in the full catalog.",
-      "compatibility": "DSH 0.1.0-rc.6+；0.1.1-rc.2 已核验",
+      "compatibility": "该发布包仅验证 / Release verified only: 0.1.1-rc.2, 0.1.2-rc.1; 0.1.5 暂停安装 / installation blocked",
       "requirements": "桌面浏览器；窄屏也可使用",
       "privacy": "不读提示词或回复 / no prompts or responses",
       "network": "不新增网络请求 / no added network requests",
       "repositoryUrl": "https://github.com/Wanbinyu/dsh-companion",
-      "installCommand": "dsh plugin --profile web add https://github.com/Wanbinyu/dsh-companion/releases/download/v0.1.10/dsh-companion-0.1.10.tgz",
-      "profiles": ["complete"]
+      "installCommand": "dsh plugin --profile web add https://github.com/Wanbinyu/dsh-companion/releases/download/v0.1.11/dsh-companion-0.1.11.tgz",
+      "profiles": [
+        "complete"
+      ],
+      "verifiedHarnessVersions": [
+        "0.1.1-rc.2",
+        "0.1.2-rc.1"
+      ]
     }
   ]
 }

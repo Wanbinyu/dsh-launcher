@@ -1,5 +1,8 @@
 # dsh-launcher
 
+> **Source-only compatibility fix, 2026-09-11**: catalog entries identify the host versions verified for each released archive. Launcher blocks plugin selection when the host is unknown or unverified. Existing installers and plugin archives have not been replaced; they do not gain these fixes automatically.
+
+
 [简体中文](README.md) | [English](README.en.md)
 
 > [!IMPORTANT]

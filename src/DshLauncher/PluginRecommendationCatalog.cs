@@ -28,7 +28,8 @@ internal sealed record PluginRecommendation(
     string RepositoryUrl,
     string InstallCommand,
     string[] Profiles,
-    string? InstalledPackageName = null)
+    string? InstalledPackageName = null,
+    string[]? VerifiedHarnessVersions = null)
 {
     public bool IsSkill => string.Equals(Kind, "skill", StringComparison.OrdinalIgnoreCase);
 
@@ -131,6 +132,8 @@ internal sealed class PluginRecommendationCatalog
                                        !string.IsNullOrWhiteSpace(item.InstalledPackageName) &&
                                        item.InstalledPackageName.All(character =>
                                            !char.IsWhiteSpace(character) && !char.IsControl(character)));
+            var validVersions = item.IsSkill || item.VerifiedHarnessVersions is { Length: > 0 } &&
+                item.VerifiedHarnessVersions.All(HarnessCompatibility.IsVersion);
             if (string.IsNullOrWhiteSpace(item.Id) ||
                 string.IsNullOrWhiteSpace(item.Name) ||
                 string.IsNullOrWhiteSpace(item.Version) ||
@@ -144,6 +147,7 @@ internal sealed class PluginRecommendationCatalog
                 string.IsNullOrWhiteSpace(item.Network) ||
                 !validKind ||
                 !validInspectionName ||
+                !validVersions ||
                 !itemIds.Add(item.Id) ||
                 item.Profiles is not { Length: > 0 } ||
                 item.Profiles.Any(profile => !profileIds.Contains(profile)) ||

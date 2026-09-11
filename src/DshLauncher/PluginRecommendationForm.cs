@@ -390,7 +390,7 @@ internal sealed class PluginRecommendationForm : Form
         _checkedItemIds.Clear();
         if (!string.Equals(profile.Id, "complete", StringComparison.OrdinalIgnoreCase))
         {
-            foreach (var item in _profileItems.Where(item => !IsInstalledCurrent(item.Id)))
+            foreach (var item in _profileItems.Where(CanInstall))
             {
                 _checkedItemIds.Add(item.Id);
             }
@@ -406,7 +406,12 @@ internal sealed class PluginRecommendationForm : Form
             return;
         }
 
-        if (args.Item.Checked)
+        if (args.Item.Checked && !CanInstall(recommendation))
+        {
+            args.Item.Checked = false;
+            _checkedItemIds.Remove(recommendation.Id);
+        }
+        else if (args.Item.Checked)
         {
             _checkedItemIds.Add(recommendation.Id);
         }
@@ -576,7 +581,7 @@ internal sealed class PluginRecommendationForm : Form
         }
 
         var selectedItems = _profileItems
-            .Where(item => _checkedItemIds.Contains(item.Id) && !IsInstalledCurrent(item.Id))
+            .Where(item => _checkedItemIds.Contains(item.Id) && CanInstall(item))
             .ToArray();
         _commandBox.Text = selectedItems.Length == 0
             ? "请选择至少一个尚未安装的插件或 Skill。完整目录默认不勾选。\r\n" +
@@ -597,7 +602,7 @@ internal sealed class PluginRecommendationForm : Form
         request.AppendLine("请帮我安装下面选中的 DeepSeek Harness 插件和 Skills。");
         request.AppendLine();
         request.AppendLine("执行要求：");
-        request.AppendLine("1. 先核对当前 DSH 版本、项目来源、许可证和命令，只处理下面列出的项目。");
+        request.AppendLine("1. 先运行 dsh --version，核对当前 DSH 版本、项目来源、许可证和命令。宿主版本不在该插件的已验证列表内时停止该项，不要忽略兼容性限制。");
         request.AppendLine("2. 先检查目标版本是否已经安装；同版本已存在时跳过，并在结果中说明。");
         request.AppendLine("3. 插件使用 dsh plugin --profile web add；Skills 安装到当前工作区 .agents/skills。");
         request.AppendLine("4. Skills 命令已设置 DO_NOT_TRACK=1；如果当前工作区不明确，请先询问我。");
@@ -613,6 +618,8 @@ internal sealed class PluginRecommendationForm : Form
             request.AppendLine($"来源：{item.RepositoryUrl}");
             request.AppendLine($"许可证：{item.License}");
             request.AppendLine($"环境要求：{item.Requirements}");
+            if (!item.IsSkill)
+                request.AppendLine($"该发布包已验证的 Harness 版本：{string.Join(", ", item.VerifiedHarnessVersions ?? [])}");
             request.AppendLine($"命令：{item.InstallCommand}");
         }
 
@@ -675,7 +682,8 @@ internal sealed class PluginRecommendationForm : Form
     {
         _installStatuses = statuses;
         foreach (var installedId in statuses
-                     .Where(entry => entry.Value.State == RecommendationInstallState.InstalledCurrent)
+                     .Where(entry => entry.Value.State is RecommendationInstallState.InstalledCurrent or
+                         RecommendationInstallState.Incompatible or RecommendationInstallState.Unknown)
                      .Select(entry => entry.Key))
         {
             _checkedItemIds.Remove(installedId);
@@ -749,6 +757,13 @@ internal sealed class PluginRecommendationForm : Form
         }
     }
 
+    private bool CanInstall(PluginRecommendation item)
+    {
+        if (item.IsSkill) return true;
+        return _installStatuses.TryGetValue(item.Id, out var status) &&
+            status.State is RecommendationInstallState.NotInstalled or RecommendationInstallState.InstalledDifferent;
+    }
+
     private bool IsInstalledCurrent(string itemId)
     {
         return _installStatuses.TryGetValue(itemId, out var status) &&
@@ -770,6 +785,7 @@ internal sealed class PluginRecommendationForm : Form
                 $"已安装 {status.InstalledVersion} / Current",
             RecommendationInstallState.InstalledDifferent =>
                 $"已有 {status.InstalledVersion} / Different",
+            RecommendationInstallState.Incompatible => "版本未适配 / Unsupported",
             _ => "无法判断 / Unknown",
         };
     }
