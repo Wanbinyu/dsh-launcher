@@ -1,6 +1,6 @@
 # dsh-launcher
 
-> **Source-only compatibility fix, 2026-09-11**: catalog entries identify the host versions verified for each released archive. Launcher blocks plugin selection when the host is unknown or unverified. Existing installers and plugin archives have not been replaced; they do not gain these fixes automatically.
+> **v0.5.2**：更新修复版插件目录；仅允许在已验证的宿主版本上选择插件。 / Updated plugin releases with verified-host installation checks.
 
 
 [简体中文](README.md) | [English](README.en.md)
@@ -34,7 +34,7 @@ Visit **[Wanbinyu DSH Toolbox](https://wanbinyu.github.io/wanbinyu-harness-toolb
 
 | Platform | Version | Role |
 | --- | --- | --- |
-| Windows | `0.5.1` | Primary edition; installs, starts, and manages Harness with a local Plugin & Skills guide. |
+| Windows | `0.5.2` | Primary edition; installs, starts, and manages Harness with a local Plugin & Skills guide. |
 | Android | `0.1.2` | Experimental LAN client; connects to Windows but cannot guarantee complete remote Web functionality. |
 
 The Android edition requires Android 10 or newer and must be tested only on a trusted private network. Harness LAN mode currently has no authentication and plain-HTTP remote access has known limitations. See the [Android setup and security guide](android/README.en.md).

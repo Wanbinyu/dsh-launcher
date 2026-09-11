@@ -404,19 +404,19 @@
       "id": "dsh-billing",
       "kind": "plugin",
       "name": "dsh-billing",
-      "version": "0.6.5",
+      "version": "0.6.6",
       "publisher": "Wanbinyu",
       "license": "MIT",
       "descriptionZh": "按 provider/model 显示费用、Token、会话额度和输入区费用进度。",
       "descriptionEn": "Shows cost, tokens, session quota, and composer progress by provider and model.",
       "reasonZh": "看清每轮成本并及时发现未定价模型。",
       "reasonEn": "Reveals per-turn cost and unpriced models.",
-      "compatibility": "该发布包仅验证 / Release verified only: 0.1.1-rc.2, 0.1.2-rc.1; 0.1.5 暂停安装 / installation blocked",
+      "compatibility": "该发布包已验证 / Release verified: 0.1.1-rc.2, 0.1.5-rc.2",
       "requirements": "无额外运行环境 / no extra runtime",
       "privacy": "本地只读统计 / local read-only accounting",
       "network": "不新增网络请求 / no added network requests",
       "repositoryUrl": "https://github.com/Wanbinyu/dsh-billing",
-      "installCommand": "dsh plugin --profile web add https://github.com/Wanbinyu/dsh-billing/releases/download/v0.6.5/dsh-billing-community-bundle-0.6.5.tgz",
+      "installCommand": "dsh plugin --profile web add https://github.com/Wanbinyu/dsh-billing/releases/download/v0.6.6/dsh-billing-community-bundle-0.6.6.tgz",
       "profiles": [
         "ai-cost",
         "complete"
@@ -424,78 +424,78 @@
       "installedPackageName": "dsh-billing-community-bundle",
       "verifiedHarnessVersions": [
         "0.1.1-rc.2",
-        "0.1.2-rc.1"
+        "0.1.5-rc.2"
       ]
     },
     {
       "id": "dsh-plugin-git-inspect",
       "kind": "plugin",
       "name": "dsh-plugin-git-inspect",
-      "version": "0.3.5",
+      "version": "0.3.6",
       "publisher": "Wanbinyu",
       "license": "MIT",
       "descriptionZh": "给 Agent 提供只读 Git 状态、diff、历史、提交和 refs 工具。",
       "descriptionEn": "Provides read-only Git status, diff, history, commit, and refs tools.",
       "reasonZh": "理解工作区变化，但不提交、推送、切换分支或修改文件。",
       "reasonEn": "Understands workspace changes without commits, pushes, branch switches, or edits.",
-      "compatibility": "该发布包仅验证 / Release verified only: 0.1.1-rc.2, 0.1.2-rc.1; 0.1.5 暂停安装 / installation blocked",
+      "compatibility": "该发布包已验证 / Release verified: 0.1.1-rc.2, 0.1.5-rc.2",
       "requirements": "Git；目标工作区必须是 Git 仓库",
       "privacy": "只读 Git 输出 / read-only Git output",
       "network": "不访问远程仓库 / no remote repository access",
       "repositoryUrl": "https://github.com/Wanbinyu/dsh-plugin-git-inspect",
-      "installCommand": "dsh plugin --profile web add https://github.com/Wanbinyu/dsh-plugin-git-inspect/releases/download/v0.3.5/dsh-plugin-git-inspect-0.3.5.tgz",
+      "installCommand": "dsh plugin --profile web add https://github.com/Wanbinyu/dsh-plugin-git-inspect/releases/download/v0.3.6/dsh-plugin-git-inspect-0.3.6.tgz",
       "profiles": [
         "software",
         "complete"
       ],
       "verifiedHarnessVersions": [
         "0.1.1-rc.2",
-        "0.1.2-rc.1"
+        "0.1.5-rc.2"
       ]
     },
     {
       "id": "dsh-error-lens",
       "kind": "plugin",
       "name": "dsh-error-lens",
-      "version": "0.1.6",
+      "version": "0.1.7",
       "publisher": "Wanbinyu",
       "license": "MIT",
       "descriptionZh": "提供只读、脱敏的供应商错误分类和处理建议。",
       "descriptionEn": "Provides read-only, redacted provider failure categories and guidance.",
       "reasonZh": "把模糊失败整理成可执行的开发排查建议。",
       "reasonEn": "Turns vague failures into actionable development guidance.",
-      "compatibility": "该发布包仅验证 / Release verified only: 0.1.1-rc.2, 0.1.2-rc.1; 0.1.5 暂停安装 / installation blocked",
+      "compatibility": "该发布包已验证 / Release verified: 0.1.1-rc.2, 0.1.5-rc.2",
       "requirements": "无额外运行环境 / no extra runtime",
       "privacy": "错误信息脱敏 / redacted diagnostics",
       "network": "不新增网络请求 / no added network requests",
       "repositoryUrl": "https://github.com/Wanbinyu/dsh-error-lens",
-      "installCommand": "dsh plugin --profile web add https://github.com/Wanbinyu/dsh-error-lens/releases/download/v0.1.6/dsh-error-lens-0.1.6.tgz",
+      "installCommand": "dsh plugin --profile web add https://github.com/Wanbinyu/dsh-error-lens/releases/download/v0.1.7/dsh-error-lens-0.1.7.tgz",
       "profiles": [
         "software",
         "complete"
       ],
       "verifiedHarnessVersions": [
         "0.1.1-rc.2",
-        "0.1.2-rc.1"
+        "0.1.5-rc.2"
       ]
     },
     {
       "id": "dsh-provider-probe",
       "kind": "plugin",
       "name": "dsh-provider-probe",
-      "version": "0.3.5",
+      "version": "0.3.6",
       "publisher": "Wanbinyu",
       "license": "MIT",
       "descriptionZh": "由用户手动触发供应商连通性、延迟和能力检查。",
       "descriptionEn": "Runs explicit provider connectivity, latency, and capability checks.",
       "reasonZh": "安装或切换模型后快速判断接口与能力是否正常。",
       "reasonEn": "Checks connectivity and capabilities after adding or changing a model.",
-      "compatibility": "该发布包仅验证 / Release verified only: 0.1.1-rc.2, 0.1.2-rc.1; 0.1.5 暂停安装 / installation blocked",
+      "compatibility": "该发布包已验证 / Release verified: 0.1.1-rc.2, 0.1.5-rc.2",
       "requirements": "至少配置一个可用供应商；只在用户手动检查时运行",
       "privacy": "不读取密钥值 / never reads secret values",
       "network": "仅手动检查所选供应商 / only explicit provider checks",
       "repositoryUrl": "https://github.com/Wanbinyu/dsh-provider-probe",
-      "installCommand": "dsh plugin --profile web add https://github.com/Wanbinyu/dsh-provider-probe/releases/download/v0.3.5/dsh-provider-probe-0.3.5.tgz",
+      "installCommand": "dsh plugin --profile web add https://github.com/Wanbinyu/dsh-provider-probe/releases/download/v0.3.6/dsh-provider-probe-0.3.6.tgz",
       "profiles": [
         "software",
         "ai-cost",
@@ -503,26 +503,26 @@
       ],
       "verifiedHarnessVersions": [
         "0.1.1-rc.2",
-        "0.1.2-rc.1"
+        "0.1.5-rc.2"
       ]
     },
     {
       "id": "dsh-concurrency-meter",
       "kind": "plugin",
       "name": "dsh-concurrency-meter",
-      "version": "0.1.5",
+      "version": "0.1.6",
       "publisher": "Wanbinyu",
       "license": "MIT",
       "descriptionZh": "只读显示活动请求、峰值并发、结果和供应商分组。",
       "descriptionEn": "Shows active requests, peak concurrency, results, and provider groups read-only.",
       "reasonZh": "判断长任务是否仍在运行，以及是否接近并发或限流边界。",
       "reasonEn": "Shows whether long work is active and nearing concurrency or rate limits.",
-      "compatibility": "该发布包仅验证 / Release verified only: 0.1.1-rc.2, 0.1.2-rc.1; 0.1.5 暂停安装 / installation blocked",
+      "compatibility": "该发布包已验证 / Release verified: 0.1.1-rc.2, 0.1.5-rc.2",
       "requirements": "无额外运行环境 / no extra runtime",
       "privacy": "仅状态与计数 / status and counts only",
       "network": "不新增网络请求 / no added network requests",
       "repositoryUrl": "https://github.com/Wanbinyu/dsh-concurrency-meter",
-      "installCommand": "dsh plugin --profile web add https://github.com/Wanbinyu/dsh-concurrency-meter/releases/download/v0.1.5/dsh-concurrency-meter-0.1.5.tgz",
+      "installCommand": "dsh plugin --profile web add https://github.com/Wanbinyu/dsh-concurrency-meter/releases/download/v0.1.6/dsh-concurrency-meter-0.1.6.tgz",
       "profiles": [
         "ai-cost",
         "automation",
@@ -530,32 +530,32 @@
       ],
       "verifiedHarnessVersions": [
         "0.1.1-rc.2",
-        "0.1.2-rc.1"
+        "0.1.5-rc.2"
       ]
     },
     {
       "id": "dsh-companion",
       "kind": "plugin",
       "name": "dsh-companion",
-      "version": "0.1.11",
+      "version": "0.1.12",
       "publisher": "Wanbinyu",
       "license": "MIT",
       "descriptionZh": "用蓝色鲸鱼男孩的动作和气泡显示任务状态。",
       "descriptionEn": "Shows task state through a blue whale-boy companion's motion and bubbles.",
       "reasonZh": "属于可选体验增强，因此只放在完整目录中，不默认推荐。",
       "reasonEn": "An optional experience enhancement, so it appears only in the full catalog.",
-      "compatibility": "该发布包仅验证 / Release verified only: 0.1.1-rc.2, 0.1.2-rc.1; 0.1.5 暂停安装 / installation blocked",
+      "compatibility": "该发布包已验证 / Release verified: 0.1.1-rc.2, 0.1.5-rc.2",
       "requirements": "桌面浏览器；窄屏也可使用",
       "privacy": "不读提示词或回复 / no prompts or responses",
       "network": "不新增网络请求 / no added network requests",
       "repositoryUrl": "https://github.com/Wanbinyu/dsh-companion",
-      "installCommand": "dsh plugin --profile web add https://github.com/Wanbinyu/dsh-companion/releases/download/v0.1.11/dsh-companion-0.1.11.tgz",
+      "installCommand": "dsh plugin --profile web add https://github.com/Wanbinyu/dsh-companion/releases/download/v0.1.12/dsh-companion-0.1.12.tgz",
       "profiles": [
         "complete"
       ],
       "verifiedHarnessVersions": [
         "0.1.1-rc.2",
-        "0.1.2-rc.1"
+        "0.1.5-rc.2"
       ]
     }
   ]

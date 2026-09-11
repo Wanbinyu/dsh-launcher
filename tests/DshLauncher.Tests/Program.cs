@@ -212,7 +212,8 @@ static void VerifyRecommendationCatalog()
     foreach (var plugin in catalog.Plugins)
     {
         if (HarnessCompatibility.IsVerified(plugin, null) ||
-            HarnessCompatibility.IsVerified(plugin, "0.1.5-rc.2") ||
+            HarnessCompatibility.IsVerified(plugin, "0.1.5-rc.2") !=
+                plugin.RepositoryUrl.StartsWith("https://github.com/Wanbinyu/", StringComparison.Ordinal) ||
             HarnessCompatibility.IsVerified(plugin, "0.1.5-rc.1") ||
             !HarnessCompatibility.IsVerified(plugin, "v0.1.1-rc.2+build"))
             throw new InvalidOperationException("Released plugin host compatibility gate failed.");
