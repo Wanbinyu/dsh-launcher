@@ -1,6 +1,6 @@
 # dsh-launcher
 
-> **v0.5.2**：更新修复版插件目录；仅允许在已验证的宿主版本上选择插件。 / Updated plugin releases with verified-host installation checks.
+> **v0.5.3**：插件目录适配 Harness 0.2.1-alpha.3 和 0.2.0-rc.2，并保留 0.1.1-rc.2、0.1.5-rc.2。 / Plugin catalog accepts Harness 0.2.1-alpha.3 and 0.2.0-rc.2, and still allows 0.1.1-rc.2 and 0.1.5-rc.2.
 
 
 [简体中文](README.md) | [English](README.en.md)
@@ -34,7 +34,7 @@
 
 | 平台 | 版本 | 定位 |
 | --- | --- | --- |
-| Windows | `0.5.2` | 主版本；可安装、启动并管理 Harness，提供本地插件与 Skills 推荐向导。 |
+| Windows | `0.5.3` | 主版本；可安装、启动并管理 Harness，提供本地插件与 Skills 推荐向导。 |
 | Android | `0.1.2` | 实验性局域网客户端；连接 Windows 主机，不保证完整远程 Web 功能。 |
 
 Android 版要求 Android 10 或更高版本，只能在可信私有网络中测试。Harness 的 LAN 模式目前没有身份认证，且普通 HTTP 远程访问存在已知限制，详见 [Android 安装与安全说明](android/README.md)。
